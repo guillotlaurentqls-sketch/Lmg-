@@ -20,8 +20,13 @@ function el(tag, cls, text) {
 }
 
 function hue(key) { let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
-function paint(node, key) {
-  const h = hue(key);
+const SAFE_COLOR = /^(#[0-9a-f]{3,8}|rgba?\([\d\s,.]+\))$/i;
+function paint(node, e) {
+  if (e.color && SAFE_COLOR.test(e.color)) { // couleur du thème du site, assombrie pour garder le texte lisible
+    node.style.background = `linear-gradient(135deg, color-mix(in srgb, ${e.color} 62%, #000), color-mix(in srgb, ${e.color} 22%, #000))`;
+    return;
+  }
+  const h = hue(e.key);
   node.style.background = `linear-gradient(135deg, hsl(${h} 55% 34%), hsl(${(h + 45) % 360} 60% 16%))`;
 }
 function fmtDate(ts) { return ts ? new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : ''; }
@@ -29,8 +34,9 @@ function fmtDate(ts) { return ts ? new Date(ts).toLocaleDateString('fr-FR', { da
 function card(e) {
   const c = el('div', 'card');
   c.tabIndex = 0;
-  paint(c, e.key);
+  paint(c, e);
   c.append(el('span', 'big', letter(e.title)));
+  if (e.icon) { const i = el('img', 'ico'); i.src = e.icon; i.alt = ''; c.append(i); }
   const meta = el('div', 'meta');
   meta.append(el('div', 't', e.title), el('div', 'u', hostOf(e.url)));
   c.append(meta);
@@ -78,7 +84,7 @@ function renderLibrary() {
   hero.hidden = recent.length === 0;
   if (recent.length) {
     const e = recent[0];
-    paint(hero, e.key);
+    paint(hero, e);
     $('heroTitle').textContent = e.title;
     $('heroSub').textContent = `${hostOf(e.url)} · dernière visite le ${fmtDate(e.lastOpened)}${e.opens > 1 ? ` · ${e.opens} ouvertures` : ''}`;
     $('heroPlay').onclick = () => openFrom(e.lastUrl || e.url, $('homeError'));

@@ -78,3 +78,4 @@ dialog label.check { display: flex; align-items: center; gap: 8px; color: var(--
 .hint { color: var(--muted); font-size: 12px; word-break: break-all; margin: 0 0 14px; }
 .dlg-actions { display: flex; gap: 8px; align-items: center; }
 .spacer { flex: 1; }
+.card .ico { position: absolute; left: 12px; top: 40px; width: 44px; height: 44px; border-radius: 10px; object-fit: contain; background: rgba(255,255,255,.92); padding: 5px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }

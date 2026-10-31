@@ -16,7 +16,7 @@ Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé pa
 - des rangées d’affiches : **Reprendre** (récents), **Favoris**, une rangée **par groupe** que tu crées, et **Mes sites** pour ceux sans groupe ;
 - au survol d’une affiche : ★ favori, ✎ renommer et classer dans un groupe (« Séries », « Sport », « Documentaires »…), ✕ retirer de la bibliothèque.
 
-Les affiches sont des couleurs générées sur ton ordinateur : l’appli ne va pas chercher le catalogue ni les images des sites. Pour voir les programmes d’un site, ouvre-le.
+**Le site s’adapte tout seul** : à l’ouverture, l’appli lit le nom de marque dans le titre de la page, l’icône du site et sa couleur de thème, et les range avec la fiche. L’affiche prend ainsi les couleurs du site. Tout reste sur ton ordinateur, comme un marque-page de navigateur ; renommer un site à la main fige son nom. L’appli ne va pas chercher le catalogue ni les images de programmes des sites : pour les voir, ouvre le site.
 
 | Raccourci | Action |
 |---|---|

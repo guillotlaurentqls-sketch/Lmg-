@@ -230,6 +230,8 @@ function attachSite(wc) {
   });
   wc.on('did-navigate-in-page', scheduleState);
   wc.on('dom-ready', applyZoom);
+  wc.on('page-favicon-updated', (_e, favicons) => captureIcon(favicons));
+  wc.on('did-finish-load', captureIdentity);
   wc.on('did-start-loading', scheduleState);
   wc.on('did-stop-loading', scheduleState);
   wc.on('page-title-updated', (_e, title) => {
@@ -298,7 +300,7 @@ function findEntry(url) {
 function touchSite(url) {
   let e = findEntry(url);
   if (!e) {
-    e = { key: siteKey(url), url, lastUrl: url, title: autoTitle(url), group: '', favorite: false, opens: 0, lastOpened: 0 };
+    e = { key: siteKey(url), url, lastUrl: url, title: autoTitle(url), titleAuto: true, group: '', favorite: false, opens: 0, lastOpened: 0, icon: '', iconUrl: '', color: '' };
     store.data.library.push(e);
     if (store.data.library.length > LIB_MAX) {
       const drop = store.data.library.filter((x) => !x.favorite).sort((x, y) => x.lastOpened - y.lastOpened)[0];
@@ -311,10 +313,58 @@ function touchSite(url) {
   store.save();
 }
 
+// ── Le site « s'adapte » : nom, icône et couleur lus sur la page ouverte, gardés dans la bibliothèque ──
+
+const COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[\d.]+\s*)?\))$/i;
+const ICON_MAX = 100 * 1024;
+
+function currentEntry() {
+  if (mode !== 'site' || !siteHome || !site || site.webContents.isDestroyed()) return null;
+  return isSameSite(site.webContents.getURL(), siteHome) ? findEntry(siteHome) : null;
+}
+
+/** « Titre de l'émission | ARTE » → « ARTE » : on ne retient que le segment qui contient le nom du site. */
+function brandFromTitle(title, url) {
+  const label = siteKey(url).split('.')[0].toLowerCase();
+  const seg = String(title || '').split(/\s+[|\-–—·•:]\s+/).map((x) => x.trim()).find((x) => x && x.toLowerCase().includes(label));
+  return seg && seg.length <= 40 ? seg : '';
+}
+
+async function captureIdentity() {
+  const e = currentEntry();
+  if (!e) return;
+  try {
+    const info = await site.webContents.executeJavaScript(
+      `({ color: (document.querySelector('meta[name="theme-color"]') || {}).content || '', title: document.title })`
+    );
+    let changed = false;
+    if (typeof info.color === 'string' && COLOR_RE.test(info.color.trim()) && e.color !== info.color.trim()) { e.color = info.color.trim(); changed = true; }
+    const brand = e.titleAuto ? brandFromTitle(info.title, e.url) : '';
+    if (brand && brand !== e.title) { e.title = brand; changed = true; }
+    if (changed) { store.save(); scheduleState(); }
+  } catch { /* page fermée entre-temps */ }
+}
+
+async function captureIcon(favicons) {
+  const e = currentEntry();
+  const url = (favicons || []).find((u) => isHttpUrl(u));
+  if (!e || !url || e.iconUrl === url) return;
+  try {
+    const res = await ses.fetch(url, { headers: { Accept: 'image/*' } });
+    const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!res.ok || !/^image\/(png|jpeg|gif|webp|x-icon|vnd\.microsoft\.icon|svg\+xml)$/.test(type)) return;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length === 0 || buf.length > ICON_MAX) return;
+    e.icon = `data:${type};base64,${buf.toString('base64')}`;
+    e.iconUrl = url;
+    store.save(); scheduleState();
+  } catch { /* icône indisponible : on garde la lettre */ }
+}
+
 function updateEntry(key, patch) {
   const e = store.data.library.find((x) => x.key === key);
   if (!e || !patch || typeof patch !== 'object') return;
-  if (typeof patch.title === 'string' && patch.title.trim()) e.title = patch.title.trim().slice(0, 60);
+  if (typeof patch.title === 'string' && patch.title.trim() && patch.title.trim() !== e.title) { e.title = patch.title.trim().slice(0, 60); e.titleAuto = false; } // un nom choisi à la main n'est plus modifié
   if (typeof patch.group === 'string') e.group = patch.group.trim().slice(0, 40);
   if (typeof patch.favorite === 'boolean') e.favorite = patch.favorite;
   store.save(); scheduleState();
@@ -532,9 +582,13 @@ if (!gotLock) {
       library: [], disabledSites: [], zoom: {}, totalBlocked: 0
     });
     migrateLibrary();
+    for (const e of store.data.library) { // entrées d'avant l'adaptation
+      if (e.titleAuto === undefined) e.titleAuto = e.title === autoTitle(e.url);
+      e.icon = e.icon || ''; e.iconUrl = e.iconUrl || ''; e.color = e.color || '';
+    }
     if (store.isNew) {
       store.data.library = defaultSites.map((d) => ({
-        key: siteKey(d.url), url: d.url, lastUrl: d.url, title: d.title, group: d.group || '', favorite: true, opens: 0, lastOpened: 0
+        key: siteKey(d.url), url: d.url, lastUrl: d.url, title: d.title, titleAuto: false, group: d.group || '', favorite: true, opens: 0, lastOpened: 0, icon: '', iconUrl: '', color: ''
       }));
       store.save();
     }
