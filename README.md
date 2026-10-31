@@ -21,11 +21,27 @@ Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé pa
 | Raccourci | Action |
 |---|---|
 | `Ctrl/Cmd + L` | saisir une adresse |
-| `Ctrl/Cmd + H` | accueil |
+| `Ctrl/Cmd + H` | accueil (les onglets restent ouverts) |
+| `Ctrl/Cmd + T` / `W` | nouvel onglet (accueil) / fermer l’onglet |
+| `Ctrl/Cmd + M` | mosaïque |
 | `Alt + ←` / `Alt + →` (`Cmd + [` / `]` sur Mac) | précédent / suivant |
 | `Ctrl/Cmd + R` | actualiser |
 | `Ctrl/Cmd + +` / `-` / `0` | zoom (mémorisé par site) |
 | `F11` | plein écran de la fenêtre (le bouton plein écran du lecteur vidéo fonctionne aussi) |
+
+### Plusieurs sites en même temps
+
+Chaque site s’ouvre dans un **onglet** (jusqu’à 8), avec son propre compteur de blocage. Les sites restent des pages **en direct** : rien n’est copié, tu vois l’aspect réel du site, mis à jour en temps réel.
+
+- **＋** (ou `Ctrl+T`) revient à l’accueil pour ouvrir un autre site ; les onglets restent ouverts et apparaissent dans la rangée **En cours**.
+- **▦ Mosaïque** (`Ctrl+M`) affiche jusqu’à 4 sites côte à côte (2 en colonnes, 3 ou 4 en grille). Cliquer dans un site le rend actif : **le son suit le site actif**, les autres sont coupés.
+- `Ctrl+Tab` change d’onglet, `Ctrl+W` ferme l’onglet. Le plein écran d’une vidéo agrandit ce site seul, puis la mosaïque revient.
+
+### Chaînes TV
+
+Sous ta bibliothèque, la section **Chaînes TV** propose les pages officielles en direct d’une vingtaine de chaînes (TF1, France 2 à 5, M6, ARTE, TMC, W9, franceinfo, BFM TV, LCI, France 24, Euronews, TV5Monde…), classées par catégorie, et un rang **Guide TV** (programme-tv.net, Télé-Loisirs, programmes ARTE). Le programme est celui du site de la chaîne, affiché tel quel. « ＋ » sur une chaîne l’ajoute sans quitter l’accueil : ajoutes-en plusieurs, puis **Tout voir en mosaïque**.
+
+La liste est dans `src/channels.json` (titre, groupe, adresse) : ajoute ou retire des lignes à volonté. Ce n’est pas « toutes les chaînes » : seules celles dont la page directe est publique y figurent. Beaucoup de chaînes privées protègent leur direct par DRM (voir plus bas) : si l’image ne démarre pas, c’est probablement la cause.
 
 ### Ce que fait l’appli
 
@@ -82,11 +98,12 @@ Chaque `dist:*` doit être lancé sur son système : `dist:win` exige `wine` dep
 
 ### Organisation du code
 
-- `src/main.js` : fenêtre, vue du site, blocage Ghostery (compteur et interrupteur par site), listes de filtres, pop-ups, liens, plein écran, permissions.
+- `src/main.js` : fenêtre, onglets et mosaïque (une vue par site), blocage Ghostery (compteur et interrupteur par site), listes de filtres, pop-ups, liens, plein écran, permissions.
 - `src/preload.js` : petite API exposée au lanceur (`contextIsolation`, aucun accès Node).
 - `src/launcher/` : interface (accueil façon streaming et barre d’outils), avec une CSP stricte.
 - `src/url.js` : normalisation des adresses, notion de « même site ».
 - `src/store.js` : bibliothèque de sites et réglages dans le dossier utilisateur (les anciens favoris/historique sont convertis automatiquement).
+- `src/channels.json` : chaînes TV et guides affichés sur l’accueil.
 - `src/sites.default.json` : sites du premier lancement (groupe « TV et replay »).
 
 Sécurité : `contextIsolation`, `sandbox` et pas de `nodeIntegration` partout, CSP sur le lanceur, `webview` interdit, navigation limitée à `http(s)`, canaux IPC acceptés uniquement depuis le lanceur. Le site est affiché dans une session persistante séparée (`persist:sites`) ; l’appli lui présente un user-agent de Chrome classique (sans « Electron »).

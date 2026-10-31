@@ -7,26 +7,39 @@ const { ElectronBlocker } = require('@ghostery/adblocker-electron');
 const { normalizeUrl, siteKey, isHttpUrl, isSameSite, isAuthSite } = require('./url');
 const { Store } = require('./store');
 
-const TOOLBAR_H = 52;
+const TABS_H = 34; // rangée des onglets
+const BAR_H = 52; // barre d'outils
+const MAX_TABS = 8;
+const MOSAIC_MAX = 4; // sites affichés en même temps dans la mosaïque
+const GAP = 3;
 const PARTITION = 'persist:sites'; // cookies, connexions et stockage conservés entre deux lancements
 const FILTER_REFRESH_MS = 6 * 60 * 60 * 1000;
-const HISTORY_MAX = 30;
+const LIB_MAX = 200;
 
 let win = null;
-let ui = null; // vue du lanceur (accueil + barre d'outils)
-let site = null; // vue du site affiché
+let ui = null; // vue du lanceur (accueil, onglets et barre d'outils)
 let ses = null;
 let blocker = null;
+let store;
+
+// Onglets : chacun a sa propre vue de site, son compteur et son état.
+let tabs = [];
+let activeId = null;
+let nextId = 1;
 let mode = 'home'; // 'home' | 'site'
-let htmlFullscreen = false;
-let siteHome = ''; // adresse ouverte par l'utilisateur : référence « même site »
+let mosaic = false;
+let fsTab = null; // onglet en plein écran vidéo
 let lastExternalOpen = 0;
 
-const page = { blocked: 0, popups: 0, error: null, drm: { status: 'unknown', detail: '' } };
+const drm = { status: 'unknown', detail: '' };
 const filters = { status: 'loading', updatedAt: null, error: '' };
 
-let store;
-const defaultSites = JSON.parse(fs.readFileSync(path.join(__dirname, 'sites.default.json'), 'utf8'));
+const readJson = (f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8'));
+const defaultSites = readJson('sites.default.json');
+const channels = readJson('channels.json');
+
+const active = () => tabs.find((t) => t.id === activeId) || null;
+const tabByWcId = (id) => tabs.find((t) => t.wc.id === id) || null;
 
 // ───────────────────────────── Sécurité globale ─────────────────────────────
 
@@ -55,14 +68,14 @@ function installBlocker(newBlocker) {
   }
   blocker = newBlocker;
   blocker.enableBlockingInSession(ses); // injecte aussi les filtres cosmétiques
-  // On remplace les écouteurs réseau par des versions « filtrables » site par site, avec compteur.
+  // On remplace les écouteurs réseau par des versions « filtrables » site par site, avec compteur par onglet.
   ses.webRequest.onBeforeRequest((details, callback) => {
     if (isDisabledFor(details)) return callback({});
-    const current = blocker;
-    current.onBeforeRequest(details, (response) => {
+    blocker.onBeforeRequest(details, (response) => {
       if (response && (response.cancel || response.redirectURL)) {
         store.data.totalBlocked += 1;
-        if (details.webContents && site && details.webContents.id === site.webContents.id) page.blocked += 1;
+        const tab = details.webContents ? tabByWcId(details.webContents.id) : null;
+        if (tab) tab.blocked += 1;
         scheduleState();
         store.save();
       }
@@ -108,7 +121,7 @@ async function updateFilters() {
   scheduleState();
 }
 
-// ───────────────────────────── Fenêtre et vues ──────────────────────────────
+// ───────────────────────────── Fenêtre ──────────────────────────────────────
 
 function createWindow() {
   win = new BaseWindow({
@@ -121,7 +134,93 @@ function createWindow() {
     icon: path.join(__dirname, '..', 'build', 'icon.png')
   });
 
-  site = new WebContentsView({
+  ui = new WebContentsView({
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false
+    }
+  });
+  win.contentView.addChildView(ui);
+  ui.webContents.loadFile(path.join(__dirname, 'launcher', 'index.html'));
+  ui.webContents.once('did-finish-load', probeWidevine);
+
+  win.on('resize', layout);
+  win.on('enter-full-screen', layout);
+  win.on('leave-full-screen', layout);
+  win.on('closed', () => { tabs = []; win = null; ui = null; });
+  layout();
+}
+
+/** Les sites affichés dans la mosaïque : les 4 premiers onglets, en y gardant l'onglet actif. */
+function mosaicTabs() {
+  const shown = tabs.slice(0, MOSAIC_MAX);
+  const a = active();
+  if (a && !shown.includes(a)) shown[shown.length - 1] = a;
+  return shown;
+}
+
+function layout() {
+  if (!win || !ui) return;
+  const { width, height } = win.getContentBounds();
+
+  if (mode === 'home' || tabs.length === 0) {
+    ui.setVisible(true);
+    ui.setBounds({ x: 0, y: 0, width, height });
+    for (const t of tabs) t.view.setVisible(false);
+    return;
+  }
+  if (fsTab) { // plein écran vidéo : le site seul, sur toute la fenêtre
+    ui.setVisible(false);
+    for (const t of tabs) t.view.setVisible(t === fsTab);
+    fsTab.view.setBounds({ x: 0, y: 0, width, height });
+    return;
+  }
+
+  const top = TABS_H + BAR_H;
+  ui.setVisible(true);
+  ui.setBounds({ x: 0, y: 0, width, height: top });
+  const bodyH = Math.max(0, height - top);
+
+  if (!mosaic) {
+    for (const t of tabs) t.view.setVisible(t.id === activeId);
+    const a = active();
+    if (a) a.view.setBounds({ x: 0, y: top, width, height: bodyH });
+    return;
+  }
+
+  // Mosaïque : 2 sites côte à côte, 3 ou 4 sites en grille 2×2 (le dernier s'étale si le nombre est impair).
+  const shown = mosaicTabs();
+  const n = shown.length;
+  const cols = n <= 1 ? 1 : 2;
+  const rows = Math.ceil(n / cols);
+  const cellW = Math.floor((width - GAP * (cols - 1)) / cols);
+  const cellH = Math.floor((bodyH - GAP * (rows - 1)) / rows);
+  for (const t of tabs) t.view.setVisible(shown.includes(t));
+  shown.forEach((t, i) => {
+    const r = Math.floor(i / cols), c = i % cols;
+    const lastAlone = cols === 2 && i === n - 1 && n % 2 === 1;
+    t.view.setBounds({
+      x: lastAlone ? 0 : c * (cellW + GAP),
+      y: top + r * (cellH + GAP),
+      width: lastAlone ? width : cellW,
+      height: cellH
+    });
+  });
+}
+
+/** Le son suit l'onglet actif : tous les autres sont coupés (mosaïque comprise). */
+function applyAudio() {
+  for (const t of tabs) {
+    if (!t.wc.isDestroyed()) t.wc.setAudioMuted(!(mode === 'site' && t.id === activeId));
+  }
+}
+
+// ───────────────────────────── Onglets ──────────────────────────────────────
+
+function createTab() {
+  const view = new WebContentsView({
     webPreferences: {
       partition: PARTITION,
       contextIsolation: true,
@@ -131,54 +230,55 @@ function createWindow() {
       spellcheck: false
     }
   });
-  ui = new WebContentsView({
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false
-    }
-  });
-
-  win.contentView.addChildView(site);
+  const tab = { id: nextId++, view, wc: view.webContents, home: '', blocked: 0, popups: 0, error: null };
+  tabs.push(tab);
+  win.contentView.addChildView(view);
   win.contentView.addChildView(ui); // le lanceur reste au-dessus
-  site.setVisible(false);
-
-  ui.webContents.loadFile(path.join(__dirname, 'launcher', 'index.html'));
-  ui.webContents.once('did-finish-load', probeWidevine);
-  attachSite(site.webContents);
-
-  win.on('resize', layout);
-  win.on('enter-full-screen', layout);
-  win.on('leave-full-screen', layout);
-  win.on('closed', () => { win = null; ui = null; site = null; });
-  layout();
+  attachTab(tab);
+  return tab;
 }
 
-function layout() {
-  if (!win || !ui || !site) return;
-  const { width, height } = win.getContentBounds();
-  if (mode === 'home') {
-    ui.setBounds({ x: 0, y: 0, width, height });
-    site.setVisible(false);
-    ui.setVisible(true);
-  } else if (htmlFullscreen) {
-    ui.setVisible(false);
-    site.setVisible(true);
-    site.setBounds({ x: 0, y: 0, width, height });
-  } else {
-    ui.setVisible(true);
-    ui.setBounds({ x: 0, y: 0, width, height: TOOLBAR_H });
-    site.setVisible(true);
-    site.setBounds({ x: 0, y: TOOLBAR_H, width, height: Math.max(0, height - TOOLBAR_H) });
-  }
+function closeTab(id) {
+  const i = tabs.findIndex((t) => t.id === id);
+  if (i < 0) return;
+  const [tab] = tabs.splice(i, 1);
+  if (fsTab === tab) { fsTab = null; if (win && win.isFullScreen()) win.setFullScreen(false); }
+  win.contentView.removeChildView(tab.view);
+  tab.wc.close();
+  if (activeId === id) activeId = (tabs[i] || tabs[i - 1] || {}).id ?? null;
+  if (tabs.length === 0) { mode = 'home'; mosaic = false; activeId = null; if (win) win.setTitle('AdBlock Launcher'); }
+  layout(); applyAudio(); scheduleState();
 }
 
-function attachSite(wc) {
+function activateTab(id) {
+  if (!tabs.some((t) => t.id === id)) return;
+  activeId = id;
+  mode = 'site';
+  const a = active();
+  layout(); applyAudio(); scheduleState();
+  a.wc.focus();
+  if (win) win.setTitle(`${a.wc.getTitle() || 'AdBlock Launcher'} — AdBlock Launcher`);
+}
+
+function cycleTab(dir) {
+  if (tabs.length < 2) return;
+  const i = tabs.findIndex((t) => t.id === activeId);
+  activateTab(tabs[(i + dir + tabs.length) % tabs.length].id);
+}
+
+function setMosaic(on) {
+  mosaic = !!on && tabs.length > 1;
+  if (mosaic) mode = 'site';
+  layout(); applyAudio(); scheduleState();
+}
+
+function attachTab(tab) {
+  const wc = tab.wc;
+  const reference = () => tab.home || wc.getURL();
+
   // Fenêtres : les pop-ups sont refusés, les liens « normaux » sont routés selon leur destination.
   wc.setWindowOpenHandler(({ url, disposition }) => {
-    if (!isHttpUrl(url)) { page.popups += 1; scheduleState(); return { action: 'deny' }; }
-    const reference = siteHome || wc.getURL();
+    if (!isHttpUrl(url)) { tab.popups += 1; scheduleState(); return { action: 'deny' }; }
     if (disposition === 'new-window') {
       // window.open(...) avec dimensions : pop-up. Seule exception, la fenêtre de connexion d'un fournisseur d'identité.
       if (isAuthSite(url)) {
@@ -190,10 +290,10 @@ function attachSite(wc) {
           }
         };
       }
-      page.popups += 1; scheduleState();
+      tab.popups += 1; scheduleState();
       return { action: 'deny' };
     }
-    if (isSameSite(url, reference) || isAuthSite(url)) {
+    if (isSameSite(url, reference()) || isAuthSite(url)) {
       setImmediate(() => { if (!wc.isDestroyed()) wc.loadURL(url); });
       return { action: 'deny' };
     }
@@ -203,50 +303,54 @@ function attachSite(wc) {
       lastExternalOpen = now;
       shell.openExternal(url);
     } else {
-      page.popups += 1; scheduleState();
+      tab.popups += 1; scheduleState();
     }
     return { action: 'deny' };
   });
 
-  const guard = (e, url, isMainFrame = true) => {
+  wc.on('will-navigate', (e, url, _inPlace, isMainFrame) => {
     if (!isMainFrame) return;
     if (!isHttpUrl(url)) { e.preventDefault(); return; }
-    if (!(isSameSite(url, siteHome || wc.getURL()) || isAuthSite(url))) {
+    if (!(isSameSite(url, reference()) || isAuthSite(url))) {
       e.preventDefault();
       shell.openExternal(url);
     }
-  };
-  wc.on('will-navigate', (e, url, _inPlace, isMainFrame) => guard(e, url, isMainFrame));
+  });
   wc.on('will-redirect', (e, url) => { if (!isHttpUrl(url)) e.preventDefault(); }); // les redirections http(s) restent libres
 
   wc.on('did-start-navigation', (details) => {
-    if (details.isMainFrame && !details.isSameDocument) { page.blocked = 0; page.popups = 0; page.error = null; }
+    if (details.isMainFrame && !details.isSameDocument) { tab.blocked = 0; tab.popups = 0; tab.error = null; }
     scheduleState();
   });
   wc.on('did-navigate', (_e, url) => {
-    const entry = mode === 'site' && siteHome ? findEntry(siteHome) : null;
-    if (entry && isSameSite(url, siteHome)) { entry.lastUrl = url; store.save(); } // « Reprendre » rouvre la dernière page
-    applyZoom(); scheduleState();
+    const entry = tab.home ? findEntry(tab.home) : null;
+    if (entry && isSameSite(url, tab.home)) { entry.lastUrl = url; store.save(); } // « Reprendre » rouvre la dernière page
+    applyZoom(tab); scheduleState();
   });
   wc.on('did-navigate-in-page', scheduleState);
-  wc.on('dom-ready', applyZoom);
-  wc.on('page-favicon-updated', (_e, favicons) => captureIcon(favicons));
-  wc.on('did-finish-load', captureIdentity);
+  wc.on('dom-ready', () => applyZoom(tab));
+  wc.on('page-favicon-updated', (_e, favicons) => captureIcon(tab, favicons));
+  wc.on('did-finish-load', () => captureIdentity(tab));
   wc.on('did-start-loading', scheduleState);
   wc.on('did-stop-loading', scheduleState);
+  wc.on('audio-state-changed', scheduleState);
   wc.on('page-title-updated', (_e, title) => {
-    if (win) win.setTitle(`${title} — AdBlock Launcher`);
+    if (win && tab.id === activeId) win.setTitle(`${title} — AdBlock Launcher`);
     scheduleState();
   });
   wc.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
     if (!isMainFrame || code === -3) return; // -3 : navigation annulée
-    page.error = { code, desc, url };
+    tab.error = { code, desc, url };
     wc.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(errorPage(desc, url)));
   });
+  // Dans la mosaïque, cliquer sur un site le rend actif (il récupère le son).
+  wc.on('focus', () => {
+    if (mosaic && mode === 'site' && activeId !== tab.id) { activeId = tab.id; applyAudio(); scheduleState(); }
+  });
 
-  // Lecteur vidéo : le plein écran HTML agrandit la vue du site à toute la fenêtre.
-  wc.on('enter-html-full-screen', () => { htmlFullscreen = true; win.setFullScreen(true); layout(); scheduleState(); });
-  wc.on('leave-html-full-screen', () => { htmlFullscreen = false; win.setFullScreen(false); layout(); scheduleState(); });
+  // Lecteur vidéo : le plein écran HTML agrandit le site à toute la fenêtre.
+  wc.on('enter-html-full-screen', () => { fsTab = tab; activeId = tab.id; win.setFullScreen(true); layout(); applyAudio(); scheduleState(); });
+  wc.on('leave-html-full-screen', () => { fsTab = null; win.setFullScreen(false); layout(); scheduleState(); });
 }
 
 function errorPage(desc, url) {
@@ -257,34 +361,7 @@ function errorPage(desc, url) {
 <p><a href="${esc(url)}" style="color:#8ab4f8">Réessayer</a></p></div>`;
 }
 
-// ───────────────────────────── Actions ──────────────────────────────────────
-
-function openSite(input) {
-  const r = normalizeUrl(input);
-  if (!r.ok) return r;
-  siteHome = r.url;
-  mode = 'site';
-  page.blocked = 0; page.popups = 0; page.error = null;
-  touchSite(r.url);
-  layout();
-  site.webContents.loadURL(r.url);
-  site.webContents.focus();
-  scheduleState();
-  return { ok: true, url: r.url };
-}
-
-function goHome() {
-  mode = 'home';
-  htmlFullscreen = false;
-  if (win && win.isFullScreen()) win.setFullScreen(false);
-  site.webContents.loadURL('about:blank'); // coupe le son et la vidéo
-  siteHome = '';
-  if (win) win.setTitle('AdBlock Launcher');
-  layout();
-  scheduleState();
-}
-
-const LIB_MAX = 200;
+// ───────────────────────────── Bibliothèque ─────────────────────────────────
 
 function autoTitle(url) {
   const label = siteKey(url).split('.')[0] || 'Site';
@@ -318,9 +395,9 @@ function touchSite(url) {
 const COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[\d.]+\s*)?\))$/i;
 const ICON_MAX = 100 * 1024;
 
-function currentEntry() {
-  if (mode !== 'site' || !siteHome || !site || site.webContents.isDestroyed()) return null;
-  return isSameSite(site.webContents.getURL(), siteHome) ? findEntry(siteHome) : null;
+function entryOf(tab) {
+  if (!tab.home || tab.wc.isDestroyed()) return null;
+  return isSameSite(tab.wc.getURL(), tab.home) ? findEntry(tab.home) : null;
 }
 
 /** « Titre de l'émission | ARTE » → « ARTE » : on ne retient que le segment qui contient le nom du site. */
@@ -330,11 +407,11 @@ function brandFromTitle(title, url) {
   return seg && seg.length <= 40 ? seg : '';
 }
 
-async function captureIdentity() {
-  const e = currentEntry();
+async function captureIdentity(tab) {
+  const e = entryOf(tab);
   if (!e) return;
   try {
-    const info = await site.webContents.executeJavaScript(
+    const info = await tab.wc.executeJavaScript(
       `({ color: (document.querySelector('meta[name="theme-color"]') || {}).content || '', title: document.title })`
     );
     let changed = false;
@@ -345,8 +422,8 @@ async function captureIdentity() {
   } catch { /* page fermée entre-temps */ }
 }
 
-async function captureIcon(favicons) {
-  const e = currentEntry();
+async function captureIcon(tab, favicons) {
+  const e = entryOf(tab);
   const url = (favicons || []).find((u) => isHttpUrl(u));
   if (!e || !url || e.iconUrl === url) return;
   try {
@@ -375,23 +452,73 @@ function removeEntry(key) {
   store.save(); scheduleState();
 }
 
-function currentKey() {
-  return mode === 'site' ? siteKey(site.webContents.getURL() || siteHome) : '';
+function toggleFavorite(url) {
+  const n = normalizeUrl(url);
+  if (!n.ok) return;
+  let e = findEntry(n.url);
+  if (!e) { touchSite(n.url); e = findEntry(n.url); e.opens = 0; e.lastOpened = 0; }
+  e.favorite = !e.favorite;
+  store.save(); scheduleState();
 }
 
-function zoomKey() { return currentKey(); }
+// ───────────────────────────── Actions ──────────────────────────────────────
 
-function applyZoom() {
-  const key = zoomKey();
-  if (key && store.data.zoom[key]) site.webContents.setZoomFactor(store.data.zoom[key]);
+/**
+ * Ouvre une adresse.
+ *  here       : navigue dans l'onglet actif (barre d'adresse)
+ *  reuse      : si un onglet du même site existe déjà, on s'y place sans le recharger (fiches de la bibliothèque)
+ *  background : ouvre dans un nouvel onglet sans quitter l'accueil
+ *  chain      : chaîne TV ou guide, qui ne s'ajoute pas à la bibliothèque
+ */
+function openSite(input, opts = {}) {
+  const r = normalizeUrl(input);
+  if (!r.ok) return r;
+  let tab = null;
+  if (opts.here && active()) tab = active();
+  else if (opts.reuse) tab = tabs.find((t) => siteKey(t.home || t.wc.getURL()) === siteKey(r.url)) || null;
+  else tab = tabs.find((t) => t.home === r.url) || null; // même adresse exacte : on réutilise l'onglet
+  const existed = !!tab;
+  if (!tab) {
+    if (tabs.length >= MAX_TABS) return { ok: false, error: `Maximum ${MAX_TABS} onglets : ferme-en un avant d’en ouvrir un autre.` };
+    tab = createTab();
+  }
+  if (!opts.chain) touchSite(r.url);
+  if (!existed || !opts.reuse) {
+    tab.home = r.url; tab.blocked = 0; tab.popups = 0; tab.error = null;
+    tab.wc.loadURL(r.url);
+  }
+  if (!opts.background) { activeId = tab.id; mode = 'site'; }
+  else if (!activeId) activeId = tab.id;
+  layout(); applyAudio(); scheduleState();
+  if (!opts.background) tab.wc.focus();
+  return { ok: true, url: r.url, id: tab.id };
+}
+
+function goHome() {
+  mode = 'home';
+  fsTab = null;
+  if (win && win.isFullScreen()) win.setFullScreen(false);
+  if (win) win.setTitle('AdBlock Launcher');
+  layout(); applyAudio(); scheduleState(); // les onglets restent ouverts (muets) : « En cours » sur l'accueil
+}
+
+function currentKey() {
+  const a = active();
+  return mode === 'site' && a ? siteKey(a.wc.getURL() || a.home) : '';
+}
+
+function applyZoom(tab) {
+  const key = siteKey(tab.wc.getURL() || tab.home);
+  if (key && store.data.zoom[key]) tab.wc.setZoomFactor(store.data.zoom[key]);
 }
 
 function changeZoom(delta) {
-  if (mode !== 'site') return;
-  const key = zoomKey();
-  const cur = site.webContents.getZoomFactor();
+  const a = active();
+  if (mode !== 'site' || !a) return;
+  const key = currentKey();
+  const cur = a.wc.getZoomFactor();
   const next = delta === 'reset' ? 1 : Math.min(3, Math.max(0.5, Math.round((cur + delta) * 100) / 100));
-  site.webContents.setZoomFactor(next);
+  a.wc.setZoomFactor(next);
   if (next === 1) delete store.data.zoom[key]; else store.data.zoom[key] = next;
   store.save();
   scheduleState();
@@ -404,18 +531,8 @@ function toggleBlocking() {
   const i = list.indexOf(key);
   if (i >= 0) list.splice(i, 1); else list.push(key);
   store.save();
-  page.blocked = 0;
-  site.webContents.reload();
+  for (const t of tabs) if (siteKey(t.wc.getURL() || t.home) === key) { t.blocked = 0; t.wc.reload(); }
   scheduleState();
-}
-
-function toggleFavorite(url) {
-  const n = normalizeUrl(url);
-  if (!n.ok) return;
-  let e = findEntry(n.url);
-  if (!e) { touchSite(n.url); e = findEntry(n.url); e.opens = 0; e.lastOpened = 0; }
-  e.favorite = !e.favorite;
-  store.save(); scheduleState();
 }
 
 async function probeWidevine() {
@@ -430,9 +547,9 @@ async function probeWidevine() {
   })()`;
   try {
     // Sonde faite depuis le lanceur (contexte sécurisé) : le résultat dépend d'Electron, pas du site.
-    page.drm = await ui.webContents.executeJavaScript(code);
+    Object.assign(drm, await ui.webContents.executeJavaScript(code));
   } catch (e) {
-    page.drm = { status: 'unknown', detail: e.message };
+    Object.assign(drm, { status: 'unknown', detail: e.message });
   }
   scheduleState();
 }
@@ -446,13 +563,16 @@ function scheduleState() {
 }
 
 function snapshot() {
-  const wc = site && !site.webContents.isDestroyed() ? site.webContents : null;
-  const url = mode === 'site' && wc ? wc.getURL() : '';
+  const a = active();
+  const wc = a && !a.wc.isDestroyed() ? a.wc : null;
+  const cur = mode === 'site' && wc ? wc.getURL() : '';
   const key = currentKey();
+  const lib = store.data.library;
   return {
     mode,
-    fullscreen: htmlFullscreen,
-    url: isHttpUrl(url) ? url : siteHome,
+    mosaic,
+    fullscreen: !!fsTab,
+    url: isHttpUrl(cur) ? cur : (a ? a.home : ''),
     title: wc ? wc.getTitle() : '',
     loading: !!wc && wc.isLoading(),
     canGoBack: !!wc && mode === 'site' && wc.navigationHistory.canGoBack(),
@@ -461,13 +581,30 @@ function snapshot() {
     siteKey: key,
     blockingEnabled: key ? !store.data.disabledSites.includes(key) : true,
     disabledSites: store.data.disabledSites,
-    pageBlocked: page.blocked,
-    popupsBlocked: page.popups,
+    pageBlocked: a ? a.blocked : 0,
+    popupsBlocked: a ? a.popups : 0,
     totalBlocked: store.data.totalBlocked,
-    error: page.error,
-    library: store.data.library,
+    error: a ? a.error : null,
+    tabs: tabs.map((t) => {
+      const u = t.wc.isDestroyed() ? '' : t.wc.getURL();
+      const entry = lib.find((e) => e.key === siteKey(t.home || u));
+      return {
+        id: t.id,
+        title: (t.wc.isDestroyed() ? '' : t.wc.getTitle()) || (entry ? entry.title : '') || siteKey(t.home),
+        url: isHttpUrl(u) ? u : t.home,
+        key: siteKey(t.home || u),
+        icon: entry ? entry.icon : '',
+        color: entry ? entry.color : '',
+        loading: !t.wc.isDestroyed() && t.wc.isLoading(),
+        audible: !t.wc.isDestroyed() && t.wc.isCurrentlyAudible(),
+        blocked: t.blocked
+      };
+    }),
+    activeId,
+    library: lib,
+    channels,
     filters: { ...filters },
-    drm: page.drm
+    drm: { ...drm }
   };
 }
 
@@ -475,20 +612,30 @@ function pushState() {
   if (ui && !ui.webContents.isDestroyed()) ui.webContents.send('state', snapshot());
 }
 
+const asId = (v) => (Number.isInteger(v) ? v : -1);
+
 function registerIpc() {
   const trusted = (e) => ui && e.sender === ui.webContents; // seul le lanceur peut commander l'appli
   const handle = (channel, fn) => ipcMain.handle(channel, (e, ...args) => (trusted(e) ? fn(...args) : undefined));
+  const onActive = (fn) => () => { const a = active(); if (a) fn(a); };
 
   handle('state:get', () => snapshot());
-  handle('site:open', (input) => openSite(String(input)));
+  handle('site:open', (input, opts) => {
+    const o = opts && typeof opts === 'object' ? opts : {};
+    return openSite(String(input), { here: o.here === true, reuse: o.reuse === true, background: o.background === true, chain: o.chain === true });
+  });
   handle('nav:home', () => goHome());
-  handle('nav:back', () => { if (site.webContents.navigationHistory.canGoBack()) site.webContents.navigationHistory.goBack(); });
-  handle('nav:forward', () => { if (site.webContents.navigationHistory.canGoForward()) site.webContents.navigationHistory.goForward(); });
-  handle('nav:reload', () => site.webContents.reload());
+  handle('nav:back', onActive((a) => { if (a.wc.navigationHistory.canGoBack()) a.wc.navigationHistory.goBack(); }));
+  handle('nav:forward', onActive((a) => { if (a.wc.navigationHistory.canGoForward()) a.wc.navigationHistory.goForward(); }));
+  handle('nav:reload', onActive((a) => a.wc.reload()));
   handle('zoom:in', () => changeZoom(0.1));
   handle('zoom:out', () => changeZoom(-0.1));
   handle('zoom:reset', () => changeZoom('reset'));
   handle('block:toggle', () => toggleBlocking());
+  handle('tab:activate', (id) => activateTab(asId(id)));
+  handle('tab:close', (id) => closeTab(asId(id)));
+  handle('view:show', (wantMosaic) => { if (tabs.length) { mode = 'site'; if (!active()) activeId = tabs[0].id; setMosaic(wantMosaic === true); } });
+  handle('mosaic:toggle', () => setMosaic(!mosaic));
   handle('fav:toggle', (url) => toggleFavorite(String(url)));
   handle('lib:update', (key, patch) => updateEntry(String(key), patch));
   handle('lib:remove', (key) => removeEntry(String(key)));
@@ -498,12 +645,14 @@ function registerIpc() {
 
 function buildMenu() {
   const isMac = process.platform === 'darwin';
-  const ifSite = (fn) => () => { if (mode === 'site') fn(); };
+  const ifSite = (fn) => () => { const a = active(); if (mode === 'site' && a) fn(a); };
   const template = [
     ...(isMac ? [{ role: 'appMenu' }] : []),
     { label: 'Fichier', submenu: [
       { label: 'Accueil', accelerator: 'CmdOrCtrl+H', click: () => goHome() },
-      { label: 'Saisir une adresse…', accelerator: 'CmdOrCtrl+L', click: () => { goFocusAddress(); } },
+      { label: 'Nouvel onglet (accueil)', accelerator: 'CmdOrCtrl+T', click: () => { goHome(); goFocusAddress(); } },
+      { label: 'Saisir une adresse…', accelerator: 'CmdOrCtrl+L', click: () => goFocusAddress() },
+      { label: 'Fermer l’onglet', accelerator: 'CmdOrCtrl+W', click: ifSite((a) => closeTab(a.id)) },
       { type: 'separator' },
       isMac ? { role: 'close' } : { role: 'quit', label: 'Quitter' }
     ] },
@@ -512,9 +661,13 @@ function buildMenu() {
       { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }
     ] },
     { label: 'Affichage', submenu: [
-      { label: 'Précédent', accelerator: isMac ? 'Cmd+[' : 'Alt+Left', click: ifSite(() => site.webContents.navigationHistory.canGoBack() && site.webContents.navigationHistory.goBack()) },
-      { label: 'Suivant', accelerator: isMac ? 'Cmd+]' : 'Alt+Right', click: ifSite(() => site.webContents.navigationHistory.canGoForward() && site.webContents.navigationHistory.goForward()) },
-      { label: 'Actualiser', accelerator: 'CmdOrCtrl+R', click: ifSite(() => site.webContents.reload()) },
+      { label: 'Précédent', accelerator: isMac ? 'Cmd+[' : 'Alt+Left', click: ifSite((a) => a.wc.navigationHistory.canGoBack() && a.wc.navigationHistory.goBack()) },
+      { label: 'Suivant', accelerator: isMac ? 'Cmd+]' : 'Alt+Right', click: ifSite((a) => a.wc.navigationHistory.canGoForward() && a.wc.navigationHistory.goForward()) },
+      { label: 'Actualiser', accelerator: 'CmdOrCtrl+R', click: ifSite((a) => a.wc.reload()) },
+      { type: 'separator' },
+      { label: 'Onglet suivant', accelerator: 'Ctrl+Tab', click: () => cycleTab(1) },
+      { label: 'Onglet précédent', accelerator: 'Ctrl+Shift+Tab', click: () => cycleTab(-1) },
+      { label: 'Mosaïque (plusieurs sites)', accelerator: 'CmdOrCtrl+M', click: () => setMosaic(!mosaic) },
       { type: 'separator' },
       { label: 'Zoom +', accelerator: 'CmdOrCtrl+Plus', click: () => changeZoom(0.1) },
       { label: 'Zoom + (=)', accelerator: 'CmdOrCtrl+=', visible: false, click: () => changeZoom(0.1) },

@@ -6,7 +6,11 @@ const call = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 
 contextBridge.exposeInMainWorld('launcher', {
   getState: () => call('state:get'),
-  open: (input) => call('site:open', input),
+  open: (input, opts) => call('site:open', input, opts),
+  activateTab: (id) => call('tab:activate', id),
+  closeTab: (id) => call('tab:close', id),
+  showView: (mosaic) => call('view:show', mosaic),
+  toggleMosaic: () => call('mosaic:toggle'),
   home: () => call('nav:home'),
   back: () => call('nav:back'),
   forward: () => call('nav:forward'),

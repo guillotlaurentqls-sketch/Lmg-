@@ -6,8 +6,8 @@ let state = null;
 function letter(title) { return (title || '?').trim().charAt(0).toUpperCase() || '?'; }
 function hostOf(url) { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } }
 
-async function openFrom(input, errEl) {
-  const r = await window.launcher.open(input);
+async function openFrom(input, errEl, opts) {
+  const r = await window.launcher.open(input, opts);
   if (!r.ok) { errEl.textContent = r.error; errEl.hidden = false; }
   else errEl.hidden = true;
 }
@@ -55,7 +55,7 @@ function card(e) {
   tools.append(fav, edit, del);
   c.append(tools);
 
-  const open = () => openFrom(e.url, $('homeError'));
+  const open = () => openFrom(e.url, $('homeError'), { reuse: true });
   c.addEventListener('click', open);
   c.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') open(); });
   return c;
@@ -143,6 +143,106 @@ function renderFooter() {
   }
 }
 
+function renderTabs() {
+  const list = $('tabList');
+  list.replaceChildren();
+  for (const t of state.tabs) {
+    const d = el('div', 'tab' + (t.id === state.activeId ? ' on' : ''));
+    if (t.icon) { const i = el('img'); i.src = t.icon; i.alt = ''; d.append(i); }
+    d.append(el('span', 'tt', t.title));
+    if (t.audible) d.append(el('span', 'snd', '🔊'));
+    const x = el('button', 'tx', '✕');
+    x.title = 'Fermer cet onglet (Ctrl+W)';
+    x.addEventListener('click', (ev) => { ev.stopPropagation(); window.launcher.closeTab(t.id); });
+    d.append(x);
+    d.title = t.url;
+    d.addEventListener('click', () => window.launcher.activateTab(t.id));
+    list.append(d);
+  }
+  $('btnMosaic').hidden = state.tabs.length < 2;
+  $('btnMosaic').classList.toggle('on', state.mosaic);
+  $('btnMosaic').textContent = state.mosaic ? '▦ Mosaïque : activée' : '▦ Mosaïque';
+}
+
+function renderRunning() {
+  const box = $('running');
+  box.replaceChildren();
+  box.hidden = state.tabs.length === 0;
+  if (!state.tabs.length) return;
+  const r = el('section', 'row');
+  const h = el('h2', '', 'En cours');
+  h.append(el('small', '', `${state.tabs.length} site${state.tabs.length > 1 ? 's' : ''} ouvert${state.tabs.length > 1 ? 's' : ''}`));
+  if (state.tabs.length > 1) {
+    const m = el('button', 'act primary', '▦ Tout voir en mosaïque');
+    m.addEventListener('click', () => window.launcher.showView(true));
+    h.append(m);
+  }
+  const track = el('div', 'track');
+  for (const t of state.tabs) {
+    const c = el('div', 'card chan running');
+    c.tabIndex = 0;
+    paint(c, { key: t.key, color: t.color });
+    c.append(el('span', 'big', letter(t.title)));
+    if (t.icon) { const i = el('img', 'ico'); i.src = t.icon; i.alt = ''; c.append(i); }
+    const meta = el('div', 'meta');
+    meta.append(el('div', 't', t.title), el('div', 'u', hostOf(t.url)));
+    c.append(meta, el('span', 'live', t.audible ? '🔊 en cours' : 'ouvert'));
+    const tools = el('div', 'tools');
+    const del = el('button', 'del', '✕');
+    del.title = 'Fermer ce site';
+    del.addEventListener('click', (ev) => { ev.stopPropagation(); window.launcher.closeTab(t.id); });
+    tools.append(del);
+    c.append(tools);
+    c.addEventListener('click', () => { window.launcher.activateTab(t.id); });
+    track.append(c);
+  }
+  const left = el('button', 'arrow left', '‹'), right = el('button', 'arrow right', '›');
+  left.addEventListener('click', () => track.scrollBy({ left: -track.clientWidth * 0.8, behavior: 'smooth' }));
+  right.addEventListener('click', () => track.scrollBy({ left: track.clientWidth * 0.8, behavior: 'smooth' }));
+  r.append(h, track, left, right);
+  box.append(r);
+}
+
+function chanCard(ch) {
+  const c = el('div', 'card chan');
+  c.tabIndex = 0;
+  paint(c, { key: ch.title, color: '' });
+  c.append(el('span', 'big', letter(ch.title)));
+  const meta = el('div', 'meta');
+  meta.append(el('div', 't', ch.title), el('div', 'u', hostOf(ch.url)));
+  c.append(meta);
+  const tools = el('div', 'tools');
+  const add = el('button', '', '＋');
+  add.title = 'Ajouter en plus (sans quitter l’accueil) : pour la mosaïque';
+  add.addEventListener('click', (ev) => { ev.stopPropagation(); openFrom(ch.url, $('homeError'), { chain: true, background: true }); });
+  tools.append(add);
+  c.append(tools);
+  const open = () => openFrom(ch.url, $('homeError'), { chain: true });
+  c.addEventListener('click', open);
+  c.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') open(); });
+  return c;
+}
+
+function renderTv() {
+  const box = $('tv');
+  box.replaceChildren();
+  if (!state.channels.length) return;
+  box.append(el('h2', 'tvhead', 'Chaînes TV'));
+  box.append(el('p', 'tvsub', 'Pages officielles en direct de chaque chaîne : le site s’affiche tel quel, programmes compris. « ＋ » ajoute une chaîne sans quitter l’accueil, puis « Tout voir en mosaïque ».'));
+  const groups = [...new Set(state.channels.map((c) => c.group))];
+  for (const g of groups) {
+    const r = el('section', 'row');
+    r.append(el('h2', '', g));
+    const track = el('div', 'track');
+    for (const ch of state.channels.filter((c) => c.group === g)) track.append(chanCard(ch));
+    const left = el('button', 'arrow left', '‹'), right = el('button', 'arrow right', '›');
+    left.addEventListener('click', () => track.scrollBy({ left: -track.clientWidth * 0.8, behavior: 'smooth' }));
+    right.addEventListener('click', () => track.scrollBy({ left: track.clientWidth * 0.8, behavior: 'smooth' }));
+    r.append(track, left, right);
+    box.append(r);
+  }
+}
+
 function renderBar() {
   const s = state;
   $('btnBack').disabled = !s.canGoBack;
@@ -168,7 +268,8 @@ function renderBar() {
 function render() {
   document.body.className = state.mode === 'site' ? 'mode-site' : 'mode-home';
   $('bar').hidden = state.mode !== 'site';
-  if (state.mode === 'home') renderLibrary();
+  if (state.mode === 'home') { renderRunning(); renderLibrary(); renderTv(); }
+  else renderTabs();
   renderFooter();
   if (state.mode === 'site') renderBar();
 }
@@ -181,7 +282,7 @@ window.launcher.onFocusAddress(() => {
 
 $('homeForm').addEventListener('submit', (e) => { e.preventDefault(); openFrom($('homeInput').value, $('homeError')); });
 $('addr').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { window.launcher.open($('addr').value).then((r) => { if (!r.ok) $('addr').classList.add('bad'); }); $('addr').blur(); }
+  if (e.key === 'Enter') { window.launcher.open($('addr').value, { here: true }).then((r) => { if (!r.ok) $('addr').classList.add('bad'); }); $('addr').blur(); }
   if (e.key === 'Escape') { $('addr').value = state.url; $('addr').blur(); }
 });
 $('addr').addEventListener('focus', () => $('addr').select());
@@ -189,6 +290,8 @@ $('btnBack').addEventListener('click', () => window.launcher.back());
 $('btnFwd').addEventListener('click', () => window.launcher.forward());
 $('btnReload').addEventListener('click', () => window.launcher.reload());
 $('btnHome').addEventListener('click', () => { $('homeInput').value = ''; window.launcher.home(); });
+$('btnNewTab').addEventListener('click', () => { $('homeInput').value = ''; window.launcher.home(); });
+$('btnMosaic').addEventListener('click', () => window.launcher.toggleMosaic());
 $('btnZoomIn').addEventListener('click', () => window.launcher.zoomIn());
 $('btnZoomOut').addEventListener('click', () => window.launcher.zoomOut());
 $('btnZoomReset').addEventListener('click', () => window.launcher.zoomReset());

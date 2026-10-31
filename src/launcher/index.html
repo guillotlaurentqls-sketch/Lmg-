@@ -8,6 +8,12 @@
   <link rel="stylesheet" href="launcher.css">
 </head>
 <body class="mode-home">
+  <nav id="tabs">
+    <div id="tabList"></div>
+    <button id="btnNewTab" class="tabbtn" title="Ouvrir un autre site (Ctrl+T)">＋</button>
+    <span class="spacer"></span>
+    <button id="btnMosaic" class="tabbtn" title="Afficher plusieurs sites en même temps (Ctrl+M)">▦ Mosaïque</button>
+  </nav>
   <header id="bar" hidden>
     <button id="btnBack" title="Précédent (Alt+←)">←</button>
     <button id="btnFwd" title="Suivant (Alt+→)">→</button>
@@ -48,8 +54,11 @@
       </div>
     </section>
 
+    <section id="running" class="row-wrap" hidden></section>
+
     <p id="empty" class="empty" hidden>Ta bibliothèque est vide. Colle l’adresse d’un site ci-dessus : il sera ajouté ici automatiquement, puis tu pourras le classer dans un groupe.</p>
     <div id="rows"></div>
+    <div id="tv"></div>
 
     <footer>
       <div id="drmBanner" class="banner" hidden></div>

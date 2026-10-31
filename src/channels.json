@@ -1,0 +1,132 @@
+[
+  {
+    "group": "Généralistes",
+    "title": "TF1",
+    "url": "https://www.tf1.fr/tf1/direct"
+  },
+  {
+    "group": "Généralistes",
+    "title": "France 2",
+    "url": "https://www.france.tv/france-2/direct.html"
+  },
+  {
+    "group": "Généralistes",
+    "title": "France 3",
+    "url": "https://www.france.tv/france-3/direct.html"
+  },
+  {
+    "group": "Généralistes",
+    "title": "France 4",
+    "url": "https://www.france.tv/france-4/direct.html"
+  },
+  {
+    "group": "Généralistes",
+    "title": "France 5",
+    "url": "https://www.france.tv/france-5/direct.html"
+  },
+  {
+    "group": "Généralistes",
+    "title": "M6",
+    "url": "https://www.m6.fr/m6/direct"
+  },
+  {
+    "group": "Généralistes",
+    "title": "ARTE",
+    "url": "https://www.arte.tv/fr/direct/"
+  },
+  {
+    "group": "Généralistes",
+    "title": "TMC",
+    "url": "https://www.tf1.fr/tmc/direct"
+  },
+  {
+    "group": "Généralistes",
+    "title": "TFX",
+    "url": "https://www.tf1.fr/tfx/direct"
+  },
+  {
+    "group": "Généralistes",
+    "title": "W9",
+    "url": "https://www.m6.fr/w9/direct"
+  },
+  {
+    "group": "Généralistes",
+    "title": "6ter",
+    "url": "https://www.m6.fr/6ter/direct"
+  },
+  {
+    "group": "Généralistes",
+    "title": "Gulli",
+    "url": "https://www.gulli.fr/"
+  },
+  {
+    "group": "Généralistes",
+    "title": "LCP",
+    "url": "https://lcp.fr/"
+  },
+  {
+    "group": "Généralistes",
+    "title": "Pluto TV",
+    "url": "https://pluto.tv/fr/live-tv"
+  },
+  {
+    "group": "Info",
+    "title": "franceinfo",
+    "url": "https://www.france.tv/franceinfo/direct.html"
+  },
+  {
+    "group": "Info",
+    "title": "BFM TV",
+    "url": "https://www.bfmtv.com/en-direct/"
+  },
+  {
+    "group": "Info",
+    "title": "LCI",
+    "url": "https://www.tf1.fr/lci/direct"
+  },
+  {
+    "group": "Info",
+    "title": "CNews",
+    "url": "https://www.cnews.fr/direct"
+  },
+  {
+    "group": "Info",
+    "title": "France 24",
+    "url": "https://www.france24.com/fr/direct"
+  },
+  {
+    "group": "Info",
+    "title": "Euronews",
+    "url": "https://fr.euronews.com/"
+  },
+  {
+    "group": "Info",
+    "title": "Public Sénat",
+    "url": "https://www.publicsenat.fr/direct"
+  },
+  {
+    "group": "Culture et sport",
+    "title": "TV5Monde",
+    "url": "https://www.tv5monde.com/direct"
+  },
+  {
+    "group": "Culture et sport",
+    "title": "La chaîne L’Équipe",
+    "url": "https://www.lequipe.fr/lachainelequipe/"
+  },
+  {
+    "group": "Guide TV",
+    "title": "Programme TV",
+    "url": "https://www.programme-tv.net/"
+  },
+  {
+    "group": "Guide TV",
+    "title": "Télé-Loisirs",
+    "url": "https://www.programme.tv/"
+  },
+  {
+    "group": "Guide TV",
+    "title": "ARTE : programmes",
+    "url": "https://www.arte.tv/fr/guide/"
+  }
+]

@@ -18,7 +18,7 @@ let proc;
 /** extraArgs : p. ex. les règles DNS locales pour le site de test. EXE=chemin pour lancer l'appli empaquetée. */
 async function launch(userData, extraArgs = []) {
   const cmd = process.env.EXE ? [process.env.EXE] : [path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron'), ROOT];
-  proc = spawn('xvfb-run', ['-a', '-s', '-screen 0 1280x800x24', ...cmd,
+  proc = spawn('xvfb-run', ['-n', '99', '-s', '-screen 0 1280x800x24 -ac', ...cmd,
     '--no-sandbox', // nécessaire uniquement parce que les conteneurs tournent en root
     `--remote-debugging-port=${PORT}`, `--user-data-dir=${userData}`, ...extraArgs],
   { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
@@ -62,6 +62,12 @@ class Tab {
   close() { this.ws.close(); }
 }
 
+/** Capture de tout l'écran virtuel (fenêtre entière, toutes les vues) : nécessite ffmpeg. */
+function screen(file) {
+  const r = require('child_process').spawnSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'x11grab', '-video_size', '1280x800', '-i', ':99', '-frames:v', '1', file]);
+  if (r.status !== 0) throw new Error('capture d\'écran impossible : ' + String(r.stderr));
+}
+
 async function ui() { for (let i = 0; i < 40; i++) { const t = (await targets()).find((x) => x.url.startsWith('file://')); if (t) return new Tab(t); await sleep(300); } throw new Error('lanceur introuvable'); }
 async function site() { const t = (await targets()).find((x) => /^(https?|data):/.test(x.url)); return t ? new Tab(t) : null; }
 const state = (u) => u.eval('window.launcher.getState()');
@@ -77,4 +83,6 @@ async function quit() {
   await sleep(500);
 }
 
-module.exports = { launch, targets, ui, site, state, sleep, quit };
+async function sites() { return (await targets()).filter((x) => /^(https?|data):/.test(x.url)).map((t) => new Tab(t)); }
+
+module.exports = { launch, targets, ui, site, sites, state, sleep, quit, screen };

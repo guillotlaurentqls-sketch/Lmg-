@@ -79,3 +79,27 @@ dialog label.check { display: flex; align-items: center; gap: 8px; color: var(--
 .dlg-actions { display: flex; gap: 8px; align-items: center; }
 .spacer { flex: 1; }
 .card .ico { position: absolute; left: 12px; top: 40px; width: 44px; height: 44px; border-radius: 10px; object-fit: contain; background: rgba(255,255,255,.92); padding: 5px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+
+#tabs { display: none; align-items: center; gap: 4px; height: 34px; padding: 4px 10px 0; background: #0f1114; border-bottom: 1px solid var(--line); }
+body.mode-site #tabs { display: flex; }
+#tabList { display: flex; gap: 4px; min-width: 0; overflow: hidden; }
+.tab { display: flex; align-items: center; gap: 6px; max-width: 200px; min-width: 70px; height: 30px; padding: 0 6px 0 10px; border-radius: 8px 8px 0 0; background: #1a1d22; color: var(--muted); cursor: pointer; border: 1px solid var(--line); border-bottom: 0; }
+.tab.on { background: var(--bg); color: var(--fg); box-shadow: inset 0 2px 0 var(--acc); }
+.tab .tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.tab img { width: 14px; height: 14px; border-radius: 3px; object-fit: contain; }
+.tab .snd { font-size: 11px; }
+.tab .tx { background: none; border: 0; height: 20px; width: 20px; padding: 0; color: var(--muted); border-radius: 4px; }
+.tab .tx:hover { color: var(--bad); background: rgba(255,255,255,.08); }
+.tabbtn { height: 26px; font-size: 12px; margin-bottom: 2px; }
+.tabbtn.on { border-color: var(--acc); color: var(--acc); }
+.spacer { flex: 1; }
+#bar { height: 52px; }
+
+.row-wrap { margin: 6px 0 0; }
+.row h2 .act { margin-left: 12px; height: 24px; font-size: 12px; text-transform: none; }
+.card.running .live { position: absolute; top: 8px; right: 8px; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #c62828; color: #fff; }
+.card.chan { width: 200px; }
+.card.chan .big { font-size: 84px; }
+.tvhead { margin: 34px 4vw 0; font-size: 22px; font-weight: 800; }
+.tvsub { margin: 4px 4vw 0; color: var(--muted); font-size: 13px; }
+.card.chan .ico { top: 12px; width: 32px; height: 32px; padding: 3px; }
