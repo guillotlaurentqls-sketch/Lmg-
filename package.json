@@ -12,9 +12,9 @@
   "scripts": {
     "start": "electron .",
     "icons": "node scripts/make-icons.js",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
     "test": "node --test test/*.test.js",
     "e2e:server": "node test/e2e/fixture-server.js",
     "e2e": "node test/e2e/fixture.js",
