@@ -1,5 +1,5 @@
 [
-  { "title": "France.tv", "url": "https://www.france.tv/" },
-  { "title": "ARTE", "url": "https://www.arte.tv/fr/" },
-  { "title": "Pluto TV", "url": "https://pluto.tv/fr" }
+  { "title": "France.tv", "url": "https://www.france.tv/", "group": "TV et replay" },
+  { "title": "ARTE", "url": "https://www.arte.tv/fr/", "group": "TV et replay" },
+  { "title": "Pluto TV", "url": "https://pluto.tv/fr", "group": "TV et replay" }
 ]

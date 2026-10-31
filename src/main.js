@@ -223,15 +223,17 @@ function attachSite(wc) {
     if (details.isMainFrame && !details.isSameDocument) { page.blocked = 0; page.popups = 0; page.error = null; }
     scheduleState();
   });
-  wc.on('did-navigate', () => { applyZoom(); scheduleState(); });
+  wc.on('did-navigate', (_e, url) => {
+    const entry = mode === 'site' && siteHome ? findEntry(siteHome) : null;
+    if (entry && isSameSite(url, siteHome)) { entry.lastUrl = url; store.save(); } // « Reprendre » rouvre la dernière page
+    applyZoom(); scheduleState();
+  });
   wc.on('did-navigate-in-page', scheduleState);
   wc.on('dom-ready', applyZoom);
   wc.on('did-start-loading', scheduleState);
   wc.on('did-stop-loading', scheduleState);
   wc.on('page-title-updated', (_e, title) => {
     if (win) win.setTitle(`${title} — AdBlock Launcher`);
-    const hit = store.data.history.find((h) => h.url === siteHome);
-    if (hit && !hit.titleFixed) { hit.title = title; hit.titleFixed = true; store.save(); }
     scheduleState();
   });
   wc.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
@@ -261,7 +263,7 @@ function openSite(input) {
   siteHome = r.url;
   mode = 'site';
   page.blocked = 0; page.popups = 0; page.error = null;
-  recordHistory(r.url);
+  touchSite(r.url);
   layout();
   site.webContents.loadURL(r.url);
   site.webContents.focus();
@@ -280,12 +282,47 @@ function goHome() {
   scheduleState();
 }
 
-function recordHistory(url) {
-  const h = store.data.history.filter((x) => x.url !== url);
-  const old = store.data.history.find((x) => x.url === url);
-  h.unshift({ url, title: old ? old.title : new URL(url).hostname.replace(/^www\./, ''), titleFixed: !!old?.titleFixed, ts: Date.now() });
-  store.data.history = h.slice(0, HISTORY_MAX);
+const LIB_MAX = 200;
+
+function autoTitle(url) {
+  const label = siteKey(url).split('.')[0] || 'Site';
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function findEntry(url) {
+  const key = siteKey(url);
+  return store.data.library.find((e) => e.key === key);
+}
+
+/** Chaque adresse ouverte est ajoutée à la bibliothèque, regroupée par site (domaine). */
+function touchSite(url) {
+  let e = findEntry(url);
+  if (!e) {
+    e = { key: siteKey(url), url, lastUrl: url, title: autoTitle(url), group: '', favorite: false, opens: 0, lastOpened: 0 };
+    store.data.library.push(e);
+    if (store.data.library.length > LIB_MAX) {
+      const drop = store.data.library.filter((x) => !x.favorite).sort((x, y) => x.lastOpened - y.lastOpened)[0];
+      if (drop) store.data.library = store.data.library.filter((x) => x !== drop);
+    }
+  }
+  e.lastUrl = url;
+  e.opens += 1;
+  e.lastOpened = Date.now();
   store.save();
+}
+
+function updateEntry(key, patch) {
+  const e = store.data.library.find((x) => x.key === key);
+  if (!e || !patch || typeof patch !== 'object') return;
+  if (typeof patch.title === 'string' && patch.title.trim()) e.title = patch.title.trim().slice(0, 60);
+  if (typeof patch.group === 'string') e.group = patch.group.trim().slice(0, 40);
+  if (typeof patch.favorite === 'boolean') e.favorite = patch.favorite;
+  store.save(); scheduleState();
+}
+
+function removeEntry(key) {
+  store.data.library = store.data.library.filter((x) => x.key !== key);
+  store.save(); scheduleState();
 }
 
 function currentKey() {
@@ -322,15 +359,13 @@ function toggleBlocking() {
   scheduleState();
 }
 
-function togglePin(url, title) {
+function toggleFavorite(url) {
   const n = normalizeUrl(url);
   if (!n.ok) return;
-  const favs = store.data.favorites;
-  const i = favs.findIndex((f) => f.url === n.url);
-  if (i >= 0) favs.splice(i, 1);
-  else favs.push({ url: n.url, title: (title || new URL(n.url).hostname.replace(/^www\./, '')).slice(0, 80) });
-  store.save();
-  scheduleState();
+  let e = findEntry(n.url);
+  if (!e) { touchSite(n.url); e = findEntry(n.url); e.opens = 0; e.lastOpened = 0; }
+  e.favorite = !e.favorite;
+  store.save(); scheduleState();
 }
 
 async function probeWidevine() {
@@ -380,8 +415,7 @@ function snapshot() {
     popupsBlocked: page.popups,
     totalBlocked: store.data.totalBlocked,
     error: page.error,
-    favorites: store.data.favorites,
-    history: store.data.history.map(({ url: u, title, ts }) => ({ url: u, title, ts })),
+    library: store.data.library,
     filters: { ...filters },
     drm: page.drm
   };
@@ -405,12 +439,9 @@ function registerIpc() {
   handle('zoom:out', () => changeZoom(-0.1));
   handle('zoom:reset', () => changeZoom('reset'));
   handle('block:toggle', () => toggleBlocking());
-  handle('fav:toggle', (url, title) => togglePin(String(url), String(title || '')));
-  handle('history:remove', (url) => {
-    store.data.history = store.data.history.filter((h) => h.url !== String(url));
-    store.save(); scheduleState();
-  });
-  handle('history:clear', () => { store.data.history = []; store.save(); scheduleState(); });
+  handle('fav:toggle', (url) => toggleFavorite(String(url)));
+  handle('lib:update', (key, patch) => updateEntry(String(key), patch));
+  handle('lib:remove', (key) => removeEntry(String(key)));
   handle('filters:update', () => updateFilters());
   handle('drm:probe', () => probeWidevine());
 }
@@ -452,6 +483,24 @@ function goFocusAddress() {
 
 // ───────────────────────────── Démarrage ────────────────────────────────────
 
+// Anciennes versions : favoris + historique → bibliothèque unique.
+function migrateLibrary() {
+  const d = store.data;
+  if (!d.favorites && !d.history) return;
+  for (const f of d.favorites || []) {
+    if (!isHttpUrl(f.url) || d.library.some((e) => e.key === siteKey(f.url))) continue;
+    d.library.push({ key: siteKey(f.url), url: f.url, lastUrl: f.url, title: f.title || autoTitle(f.url), group: '', favorite: true, opens: 0, lastOpened: 0 });
+  }
+  for (const h of (d.history || []).slice().reverse()) {
+    if (!isHttpUrl(h.url)) continue;
+    let e = d.library.find((x) => x.key === siteKey(h.url));
+    if (!e) { e = { key: siteKey(h.url), url: h.url, lastUrl: h.url, title: autoTitle(h.url), group: '', favorite: false, opens: 0, lastOpened: 0 }; d.library.push(e); }
+    e.opens += 1; e.lastOpened = Math.max(e.lastOpened, h.ts || 0);
+  }
+  delete d.favorites; delete d.history;
+  store.save();
+}
+
 function cleanUserAgent(s) {
   // Retire « Electron/x » et le nom de l'appli pour que les sites voient un Chrome ordinaire.
   return s.replace(/\s*Electron\/\S+/i, '').replace(new RegExp(`\\s*${app.getName().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/\\S+`, 'i'), '');
@@ -480,9 +529,15 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     app.setAppUserModelId('fr.lmg.adblocklauncher');
     store = new Store(path.join(app.getPath('userData'), 'state.json'), {
-      favorites: [], history: [], disabledSites: [], zoom: {}, totalBlocked: 0
+      library: [], disabledSites: [], zoom: {}, totalBlocked: 0
     });
-    if (store.isNew) { store.data.favorites = defaultSites.map((s) => ({ ...s })); store.save(); }
+    migrateLibrary();
+    if (store.isNew) {
+      store.data.library = defaultSites.map((d) => ({
+        key: siteKey(d.url), url: d.url, lastUrl: d.url, title: d.title, group: d.group || '', favorite: true, opens: 0, lastOpened: 0
+      }));
+      store.save();
+    }
 
     setupSession();
     registerIpc();

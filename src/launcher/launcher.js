@@ -19,39 +19,96 @@ function el(tag, cls, text) {
   return e;
 }
 
-function renderFavs() {
-  const box = $('favs');
-  box.replaceChildren();
-  $('favSection').hidden = state.favorites.length === 0;
-  for (const f of state.favorites) {
-    const tile = el('div', 'tile');
-    tile.append(el('div', 'letter', letter(f.title)), el('div', 't', f.title), el('div', 'u', hostOf(f.url)));
-    const x = el('button', 'x', '✕');
-    x.title = 'Retirer des favoris';
-    x.addEventListener('click', (e) => { e.stopPropagation(); window.launcher.toggleFavorite(f.url, f.title); });
-    tile.append(x);
-    tile.addEventListener('click', () => openFrom(f.url, $('homeError')));
-    box.append(tile);
-  }
+function hue(key) { let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+function paint(node, key) {
+  const h = hue(key);
+  node.style.background = `linear-gradient(135deg, hsl(${h} 55% 34%), hsl(${(h + 45) % 360} 60% 16%))`;
+}
+function fmtDate(ts) { return ts ? new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : ''; }
+
+function card(e) {
+  const c = el('div', 'card');
+  c.tabIndex = 0;
+  paint(c, e.key);
+  c.append(el('span', 'big', letter(e.title)));
+  const meta = el('div', 'meta');
+  meta.append(el('div', 't', e.title), el('div', 'u', hostOf(e.url)));
+  c.append(meta);
+  if (e.group) c.append(el('span', 'badge', e.group));
+
+  const tools = el('div', 'tools');
+  const fav = el('button', e.favorite ? 'on' : '', e.favorite ? '★' : '☆');
+  fav.title = e.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris';
+  fav.addEventListener('click', (ev) => { ev.stopPropagation(); window.launcher.updateEntry(e.key, { favorite: !e.favorite }); });
+  const edit = el('button', '', '✎');
+  edit.title = 'Renommer, classer dans un groupe';
+  edit.addEventListener('click', (ev) => { ev.stopPropagation(); editEntry(e); });
+  const del = el('button', 'del', '✕');
+  del.title = 'Retirer de la bibliothèque';
+  del.addEventListener('click', (ev) => { ev.stopPropagation(); window.launcher.removeEntry(e.key); });
+  tools.append(fav, edit, del);
+  c.append(tools);
+
+  const open = () => openFrom(e.url, $('homeError'));
+  c.addEventListener('click', open);
+  c.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') open(); });
+  return c;
 }
 
-function renderHistory() {
-  const ul = $('hist');
-  ul.replaceChildren();
-  $('histSection').hidden = state.history.length === 0;
-  const favUrls = new Set(state.favorites.map((f) => f.url));
-  for (const h of state.history) {
-    const li = el('li');
-    const pin = el('button', 'pin' + (favUrls.has(h.url) ? ' on' : ''), favUrls.has(h.url) ? '★' : '☆');
-    pin.title = favUrls.has(h.url) ? 'Retirer des favoris' : 'Épingler en favori';
-    pin.addEventListener('click', (e) => { e.stopPropagation(); window.launcher.toggleFavorite(h.url, h.title); });
-    const x = el('button', 'x', '✕');
-    x.title = 'Retirer de l’historique';
-    x.addEventListener('click', (e) => { e.stopPropagation(); window.launcher.removeHistory(h.url); });
-    li.append(pin, el('span', 't', h.title), el('span', 'u', h.url), x);
-    li.addEventListener('click', () => openFrom(h.url, $('homeError')));
-    ul.append(li);
+function row(title, entries, note) {
+  const r = el('section', 'row');
+  const h = el('h2', '', title);
+  if (note) h.append(el('small', '', note));
+  const track = el('div', 'track');
+  for (const e of entries) track.append(card(e));
+  const left = el('button', 'arrow left', '‹'), right = el('button', 'arrow right', '›');
+  left.addEventListener('click', () => track.scrollBy({ left: -track.clientWidth * 0.8, behavior: 'smooth' }));
+  right.addEventListener('click', () => track.scrollBy({ left: track.clientWidth * 0.8, behavior: 'smooth' }));
+  r.append(h, track, left, right);
+  return r;
+}
+
+function renderLibrary() {
+  const lib = state.library;
+  const byTitle = (a, b) => a.title.localeCompare(b.title, 'fr');
+  const recent = lib.filter((e) => e.lastOpened).sort((a, b) => b.lastOpened - a.lastOpened);
+
+  // Bandeau : le dernier site ouvert
+  const hero = $('hero');
+  hero.hidden = recent.length === 0;
+  if (recent.length) {
+    const e = recent[0];
+    paint(hero, e.key);
+    $('heroTitle').textContent = e.title;
+    $('heroSub').textContent = `${hostOf(e.url)} · dernière visite le ${fmtDate(e.lastOpened)}${e.opens > 1 ? ` · ${e.opens} ouvertures` : ''}`;
+    $('heroPlay').onclick = () => openFrom(e.lastUrl || e.url, $('homeError'));
+    $('heroHome').onclick = () => openFrom(e.url, $('homeError'));
   }
+
+  const rows = $('rows');
+  rows.replaceChildren();
+  $('empty').hidden = lib.length > 0;
+
+  if (recent.length) rows.append(row('Reprendre', recent.slice(0, 14)));
+  const favs = lib.filter((e) => e.favorite).sort(byTitle);
+  if (favs.length) rows.append(row('Favoris', favs));
+  const groups = [...new Set(lib.map((e) => e.group).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+  for (const g of groups) rows.append(row(g, lib.filter((e) => e.group === g).sort(byTitle)));
+  const others = lib.filter((e) => !e.group).sort(byTitle);
+  if (others.length) rows.append(row('Mes sites', others, `${others.length}`));
+
+  $('groupList').replaceChildren(...groups.map((g) => { const o = document.createElement('option'); o.value = g; return o; }));
+}
+
+let editing = null;
+function editEntry(e) {
+  editing = e;
+  $('dlgTitle').value = e.title;
+  $('dlgGroup').value = e.group;
+  $('dlgFav').checked = e.favorite;
+  $('dlgUrl').textContent = e.url;
+  $('dlg').showModal();
+  $('dlgTitle').select();
 }
 
 function renderFooter() {
@@ -74,7 +131,7 @@ function renderFooter() {
     banner.replaceChildren();
     const b = document.createElement('b');
     b.textContent = 'Widevine (DRM) absent. ';
-    banner.append(b, 'Les vidéos protégées (flux chiffrés) ne se lanceront pas dans cette version d’Electron ; les vidéos non protégées fonctionnent. Voir le README, section « DRM / Widevine ».');
+    banner.append(b, 'Les vidéos protégées (flux chiffrés) ne se lanceront pas dans cette version d’Electron ; les vidéos non protégées fonctionnent. Voir le README, section « Vidéos protégées ».');
   } else {
     banner.hidden = true;
   }
@@ -93,7 +150,7 @@ function renderBar() {
   btn.title = s.blockingEnabled
     ? `${s.pageBlocked} requêtes bloquées sur cette page, ${s.popupsBlocked} pop-ups. Cliquer pour désactiver sur ${s.siteKey}.`
     : `Blocage désactivé sur ${s.siteKey}. Cliquer pour le réactiver.`;
-  const isFav = state.favorites.some((f) => f.url === s.url);
+  const isFav = state.library.some((e) => e.key === s.siteKey && e.favorite);
   $('btnPin').textContent = isFav ? '★' : '☆';
   $('btnPin').classList.toggle('on', isFav);
   $('btnPin').title = isFav ? 'Retirer des favoris' : 'Épingler ce site en favori';
@@ -105,7 +162,8 @@ function renderBar() {
 function render() {
   document.body.className = state.mode === 'site' ? 'mode-site' : 'mode-home';
   $('bar').hidden = state.mode !== 'site';
-  renderFavs(); renderHistory(); renderFooter();
+  if (state.mode === 'home') renderLibrary();
+  renderFooter();
   if (state.mode === 'site') renderBar();
 }
 
@@ -129,8 +187,12 @@ $('btnZoomIn').addEventListener('click', () => window.launcher.zoomIn());
 $('btnZoomOut').addEventListener('click', () => window.launcher.zoomOut());
 $('btnZoomReset').addEventListener('click', () => window.launcher.zoomReset());
 $('btnBlock').addEventListener('click', () => window.launcher.toggleBlocking());
-$('btnPin').addEventListener('click', () => window.launcher.toggleFavorite(state.url, state.title));
-$('btnClearHist').addEventListener('click', () => window.launcher.clearHistory());
+$('btnPin').addEventListener('click', () => window.launcher.toggleFavorite(state.url));
+$('dlgForm').addEventListener('submit', () => {
+  if (editing) window.launcher.updateEntry(editing.key, { title: $('dlgTitle').value, group: $('dlgGroup').value, favorite: $('dlgFav').checked });
+});
+$('dlgCancel').addEventListener('click', () => $('dlg').close());
+$('dlgRemove').addEventListener('click', () => { if (editing) window.launcher.removeEntry(editing.key); $('dlg').close(); });
 $('btnFilters').addEventListener('click', () => window.launcher.updateFilters());
 
 window.launcher.getState().then((s) => { state = s; render(); $('homeInput').focus(); });

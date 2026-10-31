@@ -5,10 +5,18 @@ Une petite application de bureau (Windows, macOS, Linux) : tu colles l’adresse
 ## Utilisation
 
 1. Lance **AdBlock Launcher** depuis l’icône du bureau.
-2. Colle une adresse dans le champ (avec ou sans `https://`, espaces ou liens avec paramètres acceptés), puis **Entrée**. Rien à ajouter avant.
-3. La barre du haut donne : précédent/suivant, actualiser, accueil, zoom, l’interrupteur de blocage du site et l’étoile pour l’épingler.
+2. Colle une adresse dans le champ en haut (avec ou sans `https://`, espaces ou liens avec paramètres acceptés), puis **Entrée**. Rien à ajouter avant.
+3. Dans un site, la barre du haut donne : précédent/suivant, actualiser, accueil, zoom, l’interrupteur de blocage du site et l’étoile des favoris.
 
-Les **favoris** (France.tv, ARTE et Pluto TV au départ) et les **récents** s’affichent sur l’accueil. Survole une tuile ou une ligne pour la retirer avec ✕ ; l’étoile épingle un récent en favori.
+### Ta bibliothèque, façon streaming
+
+Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé par site : plusieurs pages d’un même site (`arte.tv/fr/…`, `player.arte.tv/…`) ne font qu’une affiche. L’accueil est présenté comme une plateforme de streaming :
+
+- un grand bandeau avec le dernier site ouvert : **Reprendre** rouvre la dernière page visitée, l’autre bouton la page d’accueil du site ;
+- des rangées d’affiches : **Reprendre** (récents), **Favoris**, une rangée **par groupe** que tu crées, et **Mes sites** pour ceux sans groupe ;
+- au survol d’une affiche : ★ favori, ✎ renommer et classer dans un groupe (« Séries », « Sport », « Documentaires »…), ✕ retirer de la bibliothèque.
+
+Les affiches sont des couleurs générées sur ton ordinateur : l’appli ne va pas chercher le catalogue ni les images des sites. Pour voir les programmes d’un site, ouvre-le.
 
 | Raccourci | Action |
 |---|---|
@@ -74,10 +82,10 @@ Chaque `dist:*` doit être lancé sur son système : `dist:win` exige `wine` dep
 
 - `src/main.js` : fenêtre, vue du site, blocage Ghostery (compteur et interrupteur par site), listes de filtres, pop-ups, liens, plein écran, permissions.
 - `src/preload.js` : petite API exposée au lanceur (`contextIsolation`, aucun accès Node).
-- `src/launcher/` : interface (accueil et barre d’outils), avec une CSP stricte.
+- `src/launcher/` : interface (accueil façon streaming et barre d’outils), avec une CSP stricte.
 - `src/url.js` : normalisation des adresses, notion de « même site ».
-- `src/store.js` : favoris, historique et réglages dans le dossier utilisateur.
-- `src/sites.default.json` : favoris du premier lancement.
+- `src/store.js` : bibliothèque de sites et réglages dans le dossier utilisateur (les anciens favoris/historique sont convertis automatiquement).
+- `src/sites.default.json` : sites du premier lancement (groupe « TV et replay »).
 
 Sécurité : `contextIsolation`, `sandbox` et pas de `nodeIntegration` partout, CSP sur le lanceur, `webview` interdit, navigation limitée à `http(s)`, canaux IPC acceptés uniquement depuis le lanceur. Le site est affiché dans une session persistante séparée (`persist:sites`) ; l’appli lui présente un user-agent de Chrome classique (sans « Electron »).
 

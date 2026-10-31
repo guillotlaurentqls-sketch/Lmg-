@@ -27,23 +27,29 @@
   </header>
 
   <main id="home">
-    <h1>AdBlock Launcher</h1>
-    <p class="sub">Colle l’adresse d’un site : il s’ouvre en direct, sans publicités, traqueurs ni pop-ups.</p>
-    <form id="homeForm">
-      <input id="homeInput" type="text" spellcheck="false" autocomplete="off" autofocus
-             placeholder="www.arte.tv/fr/ — avec ou sans https://">
-    </form>
+    <header class="top">
+      <span class="logo">AdBlock Launcher</span>
+      <form id="homeForm">
+        <input id="homeInput" type="text" spellcheck="false" autocomplete="off" autofocus
+               placeholder="Coller l’adresse d’un site puis Entrée (avec ou sans https://)">
+      </form>
+    </header>
     <p id="homeError" class="error" role="alert" hidden></p>
 
-    <section id="favSection" hidden>
-      <h2>Favoris</h2>
-      <div id="favs" class="tiles"></div>
+    <section id="hero" class="hero" hidden>
+      <div class="hero-body">
+        <p class="eyebrow">Reprendre</p>
+        <h1 id="heroTitle"></h1>
+        <p id="heroSub" class="hero-sub"></p>
+        <div class="hero-actions">
+          <button id="heroPlay" class="primary">▶ Reprendre</button>
+          <button id="heroHome">Page d’accueil du site</button>
+        </div>
+      </div>
     </section>
 
-    <section id="histSection" hidden>
-      <h2>Récents <button id="btnClearHist" class="link">Tout effacer</button></h2>
-      <ul id="hist"></ul>
-    </section>
+    <p id="empty" class="empty" hidden>Ta bibliothèque est vide. Colle l’adresse d’un site ci-dessus : il sera ajouté ici automatiquement, puis tu pourras le classer dans un groupe.</p>
+    <div id="rows"></div>
 
     <footer>
       <div id="drmBanner" class="banner" hidden></div>
@@ -51,6 +57,23 @@
       <button id="btnFilters" class="link">Mettre à jour les filtres</button>
       <span id="totalBlocked"></span>
     </footer>
+
+    <dialog id="dlg">
+      <form id="dlgForm" method="dialog">
+        <h3>Modifier le site</h3>
+        <label>Nom <input id="dlgTitle" type="text" maxlength="60" autocomplete="off"></label>
+        <label>Groupe <input id="dlgGroup" type="text" maxlength="40" list="groupList" autocomplete="off" placeholder="ex. Séries, Sport, Documentaires"></label>
+        <datalist id="groupList"></datalist>
+        <label class="check"><input id="dlgFav" type="checkbox"> Favori</label>
+        <p id="dlgUrl" class="hint"></p>
+        <div class="dlg-actions">
+          <button type="button" id="dlgRemove" class="danger">Retirer de la bibliothèque</button>
+          <span class="spacer"></span>
+          <button type="button" id="dlgCancel">Annuler</button>
+          <button type="submit" class="primary">Enregistrer</button>
+        </div>
+      </form>
+    </dialog>
   </main>
   <script src="launcher.js"></script>
 </body>
