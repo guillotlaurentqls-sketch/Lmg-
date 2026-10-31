@@ -1,0 +1,84 @@
+{
+  "name": "adblock-launcher",
+  "productName": "AdBlock Launcher",
+  "version": "1.0.0",
+  "description": "Lanceur de sites sans publicités, traqueurs ni pop-ups",
+  "main": "src/main.js",
+  "author": {
+    "name": "Lmg",
+    "email": "noreply@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "icons": "node scripts/make-icons.js",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.20.3"
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  },
+  "homepage": "https://github.com/guillotlaurentqls-sketch/Lmg-",
+  "build": {
+    "appId": "fr.lmg.adblocklauncher",
+    "productName": "AdBlock Launcher",
+    "copyright": "MIT",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "AdBlock Launcher",
+      "artifactName": "AdBlock-Launcher-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.utilities",
+      "artifactName": "AdBlock-Launcher-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Network",
+      "synopsis": "Sites sans publicités ni traqueurs",
+      "artifactName": "AdBlock-Launcher-${version}.${ext}"
+    }
+  }
+}

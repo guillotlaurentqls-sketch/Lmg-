@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AdBlock Launcher</title>
+  <link rel="stylesheet" href="launcher.css">
+</head>
+<body class="mode-home">
+  <header id="bar" hidden>
+    <button id="btnBack" title="Précédent (Alt+←)">←</button>
+    <button id="btnFwd" title="Suivant (Alt+→)">→</button>
+    <button id="btnReload" title="Actualiser (Ctrl+R)">↻</button>
+    <button id="btnHome" title="Accueil (Ctrl+H)">⌂</button>
+    <input id="addr" type="text" spellcheck="false" autocomplete="off" placeholder="Coller une adresse puis Entrée">
+    <div class="group">
+      <button id="btnZoomOut" title="Zoom − (Ctrl+-)">−</button>
+      <button id="btnZoomReset" class="zoom" title="Zoom 100 % (Ctrl+0)">100 %</button>
+      <button id="btnZoomIn" title="Zoom + (Ctrl++)">+</button>
+    </div>
+    <button id="btnBlock" class="shield" title="Activer / désactiver le blocage sur ce site">
+      <span id="shieldLabel">Blocage</span> <b id="blockedCount">0</b>
+    </button>
+    <button id="btnPin" title="Épingler ce site en favori">☆</button>
+    <span id="drmChip" class="chip" hidden title=""></span>
+  </header>
+
+  <main id="home">
+    <h1>AdBlock Launcher</h1>
+    <p class="sub">Colle l’adresse d’un site : il s’ouvre en direct, sans publicités, traqueurs ni pop-ups.</p>
+    <form id="homeForm">
+      <input id="homeInput" type="text" spellcheck="false" autocomplete="off" autofocus
+             placeholder="www.arte.tv/fr/ — avec ou sans https://">
+    </form>
+    <p id="homeError" class="error" role="alert" hidden></p>
+
+    <section id="favSection" hidden>
+      <h2>Favoris</h2>
+      <div id="favs" class="tiles"></div>
+    </section>
+
+    <section id="histSection" hidden>
+      <h2>Récents <button id="btnClearHist" class="link">Tout effacer</button></h2>
+      <ul id="hist"></ul>
+    </section>
+
+    <footer>
+      <div id="drmBanner" class="banner" hidden></div>
+      <span id="filterStatus"></span>
+      <button id="btnFilters" class="link">Mettre à jour les filtres</button>
+      <span id="totalBlocked"></span>
+    </footer>
+  </main>
+  <script src="launcher.js"></script>
+</body>
+</html>
