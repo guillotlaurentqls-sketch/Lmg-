@@ -70,6 +70,8 @@ Prérequis : Node.js 22 ou plus.
 npm install
 npm start             # lance l'appli (sous Linux en root/conteneur : ajouter -- --no-sandbox)
 npm test              # tests de la normalisation des adresses
+npm run e2e           # test de bout en bout sur un site local (voir docs/ENVIRONNEMENT.md)
+npm run e2e:real -- https://www.arte.tv/fr/   # essai sur un vrai site, avec captures
 npm run icons         # régénère build/icon.png
 npm run dist:linux    # AppImage + deb  → dist/
 npm run dist:win      # installateur NSIS (à lancer sous Windows)

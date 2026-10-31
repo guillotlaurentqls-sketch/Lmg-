@@ -15,7 +15,10 @@
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "e2e:server": "node test/e2e/fixture-server.js",
+    "e2e": "node test/e2e/fixture.js",
+    "e2e:real": "node test/e2e/real-site.js"
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.20.3"
