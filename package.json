@@ -2,7 +2,7 @@
   "name": "adblock-launcher",
   "productName": "AdBlock Launcher",
   "version": "1.0.0",
-  "description": "Lanceur de sites sans publicités, traqueurs ni pop-ups",
+  "description": "Lanceur de sites sans publicit\u00e9s, traqueurs ni pop-ups",
   "main": "src/main.js",
   "author": {
     "name": "Lmg",
@@ -18,7 +18,8 @@
     "test": "node --test test/*.test.js",
     "e2e:server": "node test/e2e/fixture-server.js",
     "e2e": "node test/e2e/fixture.js",
-    "e2e:real": "node test/e2e/real-site.js"
+    "e2e:real": "node test/e2e/real-site.js",
+    "e2e:profiles": "node test/e2e/profiles.js"
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.20.3"
@@ -80,7 +81,7 @@
       ],
       "icon": "build/icon.png",
       "category": "Network",
-      "synopsis": "Sites sans publicités ni traqueurs",
+      "synopsis": "Sites sans publicit\u00e9s ni traqueurs",
       "artifactName": "AdBlock-Launcher-${version}.${ext}"
     }
   }

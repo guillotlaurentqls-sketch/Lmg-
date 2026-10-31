@@ -8,25 +8,28 @@ const { normalizeUrl, siteKey, isHttpUrl, isSameSite, isAuthSite } = require('./
 const { Store } = require('./store');
 
 const TABS_H = 34; // rangée des onglets
-const BAR_H = 52; // barre d'outils
+const BAR_H = 52; // barre d'outils (une ligne)
+const BAR_H_COMPACT = 92; // barre d'outils sur petit écran : deux lignes (boutons, puis adresse)
+const COMPACT_W = 700;
 const MAX_TABS = 8;
 const MOSAIC_MAX = 4; // sites affichés en même temps dans la mosaïque
 const GAP = 3;
-const PARTITION = 'persist:sites'; // cookies, connexions et stockage conservés entre deux lancements
 const FILTER_REFRESH_MS = 6 * 60 * 60 * 1000;
 const LIB_MAX = 200;
 
 let win = null;
 let ui = null; // vue du lanceur (accueil, onglets et barre d'outils)
-let ses = null;
+let ses = null; // session du profil actif
+const sessions = new Map(); // une session (cookies, connexions) par profil
 let blocker = null;
+let profileId = null; // profil actif (null : écran « Qui regarde ? »)
 let store;
 
 // Onglets : chacun a sa propre vue de site, son compteur et son état.
 let tabs = [];
 let activeId = null;
 let nextId = 1;
-let mode = 'home'; // 'home' | 'site'
+let mode = 'home'; // 'profiles' | 'home' | 'site'
 let mosaic = false;
 let fsTab = null; // onglet en plein écran vidéo
 let lastExternalOpen = 0;
@@ -62,14 +65,31 @@ function isDisabledFor(details) {
   return !!key && store.data.disabledSites.includes(key);
 }
 
-function installBlocker(newBlocker) {
-  if (blocker) {
-    try { blocker.disableBlockingInSession(ses); } catch { /* déjà retiré */ }
+// Ghostery ne sait câbler qu'une session à la fois (ses canaux IPC sont uniques) : on câble chaque profil nous-mêmes.
+const COSMETIC_IPC = '@ghostery/adblocker/inject-cosmetic-filters';
+const MUTATION_IPC = '@ghostery/adblocker/is-mutation-observer-enabled';
+const PRELOAD_PATH = require.resolve('@ghostery/adblocker-electron-preload', { paths: [require.resolve('@ghostery/adblocker-electron')] });
+const preloaded = new WeakSet();
+let cosmeticIpcDone = false;
+
+function registerCosmeticIpc() {
+  if (cosmeticIpcDone) return;
+  cosmeticIpcDone = true;
+  // Filtres cosmétiques (éléments de pub masqués) : on les saute sur les sites où le blocage est désactivé.
+  ipcMain.handle(COSMETIC_IPC, (e, url, msg) => {
+    if (!blocker || store.data.disabledSites.includes(siteKey(String(url || '')))) return undefined;
+    return blocker.onInjectCosmeticFilters(e, url, msg);
+  });
+  ipcMain.handle(MUTATION_IPC, (e) => (blocker ? blocker.onIsMutationObserverEnabled(e) : false));
+}
+
+function wireSession(s) {
+  if (!preloaded.has(s) && blocker.config.loadCosmeticFilters === true) {
+    s.registerPreloadScript({ type: 'frame', filePath: PRELOAD_PATH });
+    preloaded.add(s);
   }
-  blocker = newBlocker;
-  blocker.enableBlockingInSession(ses); // injecte aussi les filtres cosmétiques
-  // On remplace les écouteurs réseau par des versions « filtrables » site par site, avec compteur par onglet.
-  ses.webRequest.onBeforeRequest((details, callback) => {
+  // Écouteurs réseau « filtrables » site par site, avec compteur par onglet.
+  s.webRequest.onBeforeRequest((details, callback) => {
     if (isDisabledFor(details)) return callback({});
     blocker.onBeforeRequest(details, (response) => {
       if (response && (response.cancel || response.redirectURL)) {
@@ -82,10 +102,16 @@ function installBlocker(newBlocker) {
       callback(response);
     });
   });
-  ses.webRequest.onHeadersReceived((details, callback) => {
+  s.webRequest.onHeadersReceived((details, callback) => {
     if (isDisabledFor(details)) return callback({});
     blocker.onHeadersReceived(details, callback);
   });
+}
+
+function installBlocker(newBlocker) {
+  blocker = newBlocker; // les écouteurs lisent toujours le blocage courant : les listes se renouvellent sans recâblage
+  registerCosmeticIpc();
+  for (const s of sessions.values()) wireSession(s);
 }
 
 const cacheFile = () => path.join(app.getPath('userData'), 'filters.bin');
@@ -127,8 +153,8 @@ function createWindow() {
   win = new BaseWindow({
     width: 1280,
     height: 800,
-    minWidth: 720,
-    minHeight: 480,
+    minWidth: 360,
+    minHeight: 520,
     title: 'AdBlock Launcher',
     backgroundColor: '#14161a',
     icon: path.join(__dirname, '..', 'build', 'icon.png')
@@ -165,7 +191,7 @@ function layout() {
   if (!win || !ui) return;
   const { width, height } = win.getContentBounds();
 
-  if (mode === 'home' || tabs.length === 0) {
+  if (mode !== 'site' || tabs.length === 0) {
     ui.setVisible(true);
     ui.setBounds({ x: 0, y: 0, width, height });
     for (const t of tabs) t.view.setVisible(false);
@@ -178,7 +204,7 @@ function layout() {
     return;
   }
 
-  const top = TABS_H + BAR_H;
+  const top = TABS_H + (width < COMPACT_W ? BAR_H_COMPACT : BAR_H);
   ui.setVisible(true);
   ui.setBounds({ x: 0, y: 0, width, height: top });
   const bodyH = Math.max(0, height - top);
@@ -222,7 +248,7 @@ function applyAudio() {
 function createTab() {
   const view = new WebContentsView({
     webPreferences: {
-      partition: PARTITION,
+      partition: partitionFor(profileId),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
@@ -363,6 +389,9 @@ function errorPage(desc, url) {
 
 // ───────────────────────────── Bibliothèque ─────────────────────────────────
 
+const profile = () => store.data.profiles.find((x) => x.id === profileId) || null;
+const lib = () => (profile() ? profile().library : []);
+
 function autoTitle(url) {
   const label = siteKey(url).split('.')[0] || 'Site';
   return label.charAt(0).toUpperCase() + label.slice(1);
@@ -370,18 +399,20 @@ function autoTitle(url) {
 
 function findEntry(url) {
   const key = siteKey(url);
-  return store.data.library.find((e) => e.key === key);
+  return lib().find((e) => e.key === key);
 }
 
 /** Chaque adresse ouverte est ajoutée à la bibliothèque, regroupée par site (domaine). */
 function touchSite(url) {
   let e = findEntry(url);
   if (!e) {
-    e = { key: siteKey(url), url, lastUrl: url, title: autoTitle(url), titleAuto: true, group: '', favorite: false, opens: 0, lastOpened: 0, icon: '', iconUrl: '', color: '' };
-    store.data.library.push(e);
-    if (store.data.library.length > LIB_MAX) {
-      const drop = store.data.library.filter((x) => !x.favorite).sort((x, y) => x.lastOpened - y.lastOpened)[0];
-      if (drop) store.data.library = store.data.library.filter((x) => x !== drop);
+    e = newEntry({ key: siteKey(url), url, title: autoTitle(url), titleAuto: true });
+    const p = profile();
+    if (!p) return;
+    p.library.push(e);
+    if (p.library.length > LIB_MAX) {
+      const drop = p.library.filter((x) => !x.favorite && !x.later).sort((x, y) => x.lastOpened - y.lastOpened)[0];
+      if (drop) p.library = p.library.filter((x) => x !== drop);
     }
   }
   e.lastUrl = url;
@@ -394,6 +425,10 @@ function touchSite(url) {
 
 const COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*[\d.]+\s*)?\))$/i;
 const ICON_MAX = 100 * 1024;
+
+function newEntry(o) {
+  return { key: '', url: '', lastUrl: o.url, title: '', titleAuto: false, group: '', favorite: false, later: false, opens: 0, lastOpened: 0, icon: '', iconUrl: '', color: '', ...o };
+}
 
 function entryOf(tab) {
   if (!tab.home || tab.wc.isDestroyed()) return null;
@@ -439,25 +474,27 @@ async function captureIcon(tab, favicons) {
 }
 
 function updateEntry(key, patch) {
-  const e = store.data.library.find((x) => x.key === key);
+  const e = lib().find((x) => x.key === key);
   if (!e || !patch || typeof patch !== 'object') return;
   if (typeof patch.title === 'string' && patch.title.trim() && patch.title.trim() !== e.title) { e.title = patch.title.trim().slice(0, 60); e.titleAuto = false; } // un nom choisi à la main n'est plus modifié
   if (typeof patch.group === 'string') e.group = patch.group.trim().slice(0, 40);
   if (typeof patch.favorite === 'boolean') e.favorite = patch.favorite;
+  if (typeof patch.later === 'boolean') e.later = patch.later;
   store.save(); scheduleState();
 }
 
 function removeEntry(key) {
-  store.data.library = store.data.library.filter((x) => x.key !== key);
+  const p = profile();
+  if (p) p.library = p.library.filter((x) => x.key !== key);
   store.save(); scheduleState();
 }
 
-function toggleFavorite(url) {
+function toggleFlag(url, flag) {
   const n = normalizeUrl(url);
-  if (!n.ok) return;
+  if (!n.ok || !profile()) return;
   let e = findEntry(n.url);
   if (!e) { touchSite(n.url); e = findEntry(n.url); e.opens = 0; e.lastOpened = 0; }
-  e.favorite = !e.favorite;
+  e[flag] = !e[flag];
   store.save(); scheduleState();
 }
 
@@ -471,6 +508,7 @@ function toggleFavorite(url) {
  *  chain      : chaîne TV ou guide, qui ne s'ajoute pas à la bibliothèque
  */
 function openSite(input, opts = {}) {
+  if (!profileId) return { ok: false, error: 'Choisis d’abord un profil.' };
   const r = normalizeUrl(input);
   if (!r.ok) return r;
   let tab = null;
@@ -567,7 +605,8 @@ function snapshot() {
   const wc = a && !a.wc.isDestroyed() ? a.wc : null;
   const cur = mode === 'site' && wc ? wc.getURL() : '';
   const key = currentKey();
-  const lib = store.data.library;
+  const library = lib();
+  const prof = profile();
   return {
     mode,
     mosaic,
@@ -587,7 +626,7 @@ function snapshot() {
     error: a ? a.error : null,
     tabs: tabs.map((t) => {
       const u = t.wc.isDestroyed() ? '' : t.wc.getURL();
-      const entry = lib.find((e) => e.key === siteKey(t.home || u));
+      const entry = library.find((e) => e.key === siteKey(t.home || u));
       return {
         id: t.id,
         title: (t.wc.isDestroyed() ? '' : t.wc.getTitle()) || (entry ? entry.title : '') || siteKey(t.home),
@@ -601,8 +640,11 @@ function snapshot() {
       };
     }),
     activeId,
-    library: lib,
+    library,
     channels,
+    profile: prof ? { id: prof.id, name: prof.name, emoji: prof.emoji, color: prof.color } : null,
+    profiles: store.data.profiles.map((x) => ({ id: x.id, name: x.name, emoji: x.emoji, color: x.color, count: x.library.length })),
+    settings: { theme: store.data.theme, askProfile: store.data.askProfile },
     filters: { ...filters },
     drm: { ...drm }
   };
@@ -636,7 +678,13 @@ function registerIpc() {
   handle('tab:close', (id) => closeTab(asId(id)));
   handle('view:show', (wantMosaic) => { if (tabs.length) { mode = 'site'; if (!active()) activeId = tabs[0].id; setMosaic(wantMosaic === true); } });
   handle('mosaic:toggle', () => setMosaic(!mosaic));
-  handle('fav:toggle', (url) => toggleFavorite(String(url)));
+  handle('fav:toggle', (url) => toggleFlag(String(url), 'favorite'));
+  handle('later:toggle', (url) => toggleFlag(String(url), 'later'));
+  handle('profile:select', (id) => selectProfile(String(id)));
+  handle('profile:chooser', () => openChooser());
+  handle('profile:save', (id, data) => saveProfile(id == null ? null : String(id), data));
+  handle('profile:delete', (id) => deleteProfile(String(id)));
+  handle('settings:set', (patch) => setSettings(patch));
   handle('lib:update', (key, patch) => updateEntry(String(key), patch));
   handle('lib:remove', (key) => removeEntry(String(key)));
   handle('filters:update', () => updateFilters());
@@ -690,6 +738,7 @@ function goFocusAddress() {
 function migrateLibrary() {
   const d = store.data;
   if (!d.favorites && !d.history) return;
+  d.library = d.library || [];
   for (const f of d.favorites || []) {
     if (!isHttpUrl(f.url) || d.library.some((e) => e.key === siteKey(f.url))) continue;
     d.library.push({ key: siteKey(f.url), url: f.url, lastUrl: f.url, title: f.title || autoTitle(f.url), group: '', favorite: true, opens: 0, lastOpened: 0 });
@@ -709,15 +758,95 @@ function cleanUserAgent(s) {
   return s.replace(/\s*Electron\/\S+/i, '').replace(new RegExp(`\\s*${app.getName().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/\\S+`, 'i'), '');
 }
 
-function setupSession() {
-  ses = session.fromPartition(PARTITION);
-  ses.setUserAgent(cleanUserAgent(ses.getUserAgent()));
+const partitionFor = (id) => (id === 'p1' ? 'persist:sites' : `persist:profile-${id}`); // p1 garde la session des versions précédentes
 
-  // Permissions : lecture, plein écran et presse-papiers seulement. Caméra, micro, position, notifications : refusés.
-  const allowed = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock']);
-  ses.setPermissionRequestHandler((_wc, permission, callback) => callback(allowed.has(permission)));
-  ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
+function sessionFor(id) {
+  let s = sessions.get(id);
+  if (!s) {
+    s = session.fromPartition(partitionFor(id));
+    s.setUserAgent(cleanUserAgent(s.getUserAgent()));
+    // Permissions : lecture, plein écran et presse-papiers seulement. Caméra, micro, position, notifications : refusés.
+    const allowed = new Set(['fullscreen', 'clipboard-sanitized-write', 'pointerLock']);
+    s.setPermissionRequestHandler((_wc, permission, callback) => callback(allowed.has(permission)));
+    s.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
+    sessions.set(id, s);
+    if (blocker) wireSession(s);
+  }
+  return s;
 }
+
+// ── Profils : chacun a sa bibliothèque, ses favoris, sa liste et sa propre session de navigation ──
+
+function closeAllTabs() {
+  for (const t of tabs.slice()) closeTab(t.id);
+  fsTab = null; mosaic = false; activeId = null;
+}
+
+function selectProfile(id) {
+  if (!store.data.profiles.some((x) => x.id === id)) return;
+  closeAllTabs();
+  profileId = id;
+  store.data.currentProfile = id;
+  ses = sessionFor(id);
+  mode = 'home';
+  store.save();
+  if (win) win.setTitle('AdBlock Launcher');
+  layout(); scheduleState();
+}
+
+function openChooser() {
+  closeAllTabs();
+  profileId = null; ses = null;
+  mode = 'profiles';
+  if (win) { if (win.isFullScreen()) win.setFullScreen(false); win.setTitle('AdBlock Launcher'); }
+  layout(); scheduleState();
+}
+
+const EMOJI_RE = /^\p{Extended_Pictographic}[\p{Extended_Pictographic}\u200d\ufe0f]*$/u;
+
+function saveProfile(id, data) {
+  if (!data || typeof data !== 'object') return { ok: false, error: 'Profil invalide.' };
+  const name = String(data.name || '').trim().slice(0, 20);
+  const emoji = String(data.emoji || '');
+  const color = String(data.color || '');
+  if (!name) return { ok: false, error: 'Donne un nom au profil.' };
+  if (!EMOJI_RE.test(emoji) || emoji.length > 12) return { ok: false, error: 'Choisis un avatar.' };
+  if (!/^#[0-9a-f]{6}$/i.test(color)) return { ok: false, error: 'Choisis une couleur.' };
+  if (store.data.profiles.some((x) => x.id !== id && x.name.toLowerCase() === name.toLowerCase())) return { ok: false, error: 'Ce nom existe déjà.' };
+  if (id) {
+    const p = store.data.profiles.find((x) => x.id === id);
+    if (!p) return { ok: false, error: 'Profil introuvable.' };
+    Object.assign(p, { name, emoji, color });
+  } else {
+    if (store.data.profiles.length >= 6) return { ok: false, error: 'Six profils au maximum.' };
+    store.data.profiles.push({ id: 'p' + Date.now().toString(36), name, emoji, color, createdAt: Date.now(), library: seedLibrary() });
+  }
+  store.save(); scheduleState();
+  return { ok: true };
+}
+
+async function deleteProfile(id) {
+  if (store.data.profiles.length <= 1) return { ok: false, error: 'Il faut garder au moins un profil.' };
+  const p = store.data.profiles.find((x) => x.id === id);
+  if (!p) return { ok: false };
+  if (profileId === id) openChooser();
+  store.data.profiles = store.data.profiles.filter((x) => x.id !== id);
+  if (store.data.currentProfile === id) store.data.currentProfile = null;
+  store.save();
+  try { await sessionFor(id).clearStorageData(); } catch { /* session déjà vide */ } // supprime aussi ses connexions
+  sessions.delete(id);
+  scheduleState();
+  return { ok: true };
+}
+
+function setSettings(patch) {
+  if (!patch || typeof patch !== 'object') return;
+  if (['dark', 'light', 'auto'].includes(patch.theme)) store.data.theme = patch.theme;
+  if (typeof patch.askProfile === 'boolean') store.data.askProfile = patch.askProfile;
+  store.save(); scheduleState();
+}
+
+const seedLibrary = () => defaultSites.map((d) => newEntry({ key: siteKey(d.url), url: d.url, lastUrl: d.url, title: d.title, group: d.group || '', favorite: true }));
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -732,24 +861,32 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     app.setAppUserModelId('fr.lmg.adblocklauncher');
     store = new Store(path.join(app.getPath('userData'), 'state.json'), {
-      library: [], disabledSites: [], zoom: {}, totalBlocked: 0
+      profiles: [], currentProfile: null, askProfile: true, theme: 'dark', disabledSites: [], zoom: {}, totalBlocked: 0
     });
     migrateLibrary();
-    for (const e of store.data.library) { // entrées d'avant l'adaptation
-      if (e.titleAuto === undefined) e.titleAuto = e.title === autoTitle(e.url);
-      e.icon = e.icon || ''; e.iconUrl = e.iconUrl || ''; e.color = e.color || '';
+    const d = store.data;
+    if (d.library) { // version à profil unique → profil « Moi » (garde sa session de navigation)
+      d.profiles.push({ id: 'p1', name: 'Moi', emoji: '🙂', color: '#4f7cff', createdAt: Date.now(), library: d.library });
+      delete d.library;
     }
-    if (store.isNew) {
-      store.data.library = defaultSites.map((d) => ({
-        key: siteKey(d.url), url: d.url, lastUrl: d.url, title: d.title, titleAuto: false, group: d.group || '', favorite: true, opens: 0, lastOpened: 0, icon: '', iconUrl: '', color: ''
-      }));
-      store.save();
+    if (d.profiles.length === 0) {
+      d.profiles.push({ id: 'p1', name: 'Moi', emoji: '🙂', color: '#4f7cff', createdAt: Date.now(), library: seedLibrary() });
     }
+    for (const p of d.profiles) {
+      for (const e of p.library) { // entrées d'avant l'adaptation et les listes
+        if (e.titleAuto === undefined) e.titleAuto = e.title === autoTitle(e.url);
+        e.icon = e.icon || ''; e.iconUrl = e.iconUrl || ''; e.color = e.color || ''; e.later = !!e.later;
+      }
+    }
+    store.save();
 
-    setupSession();
     registerIpc();
     buildMenu();
     createWindow();
+    const last = d.profiles.find((x) => x.id === d.currentProfile);
+    if (d.profiles.length === 1) selectProfile(d.profiles[0].id);
+    else if (!d.askProfile && last) selectProfile(last.id);
+    else openChooser();
 
     const startLink = process.argv.slice(1).find((a) => /^https?:\/\//i.test(a));
     if (startLink) setTimeout(() => openSite(startLink), 300);
@@ -763,8 +900,7 @@ if (!gotLock) {
 
   app.on('before-quit', () => {
     if (store) store.flush();
-    if (ses) ses.cookies.flushStore().catch(() => {}); // garantit la connexion conservée au prochain lancement
-    if (ses) ses.flushStorageData();
+    for (const x of sessions.values()) { x.cookies.flushStore().catch(() => {}); x.flushStorageData(); } // garantit la connexion conservée au prochain lancement
   });
   app.on('window-all-closed', () => app.quit());
 }

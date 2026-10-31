@@ -1,89 +1,125 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="auto">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
   <title>AdBlock Launcher</title>
   <link rel="stylesheet" href="launcher.css">
 </head>
 <body class="mode-home">
-  <nav id="tabs">
+  <!-- Mode « site » : onglets + barre d'outils -->
+  <nav id="tabs" aria-label="Onglets">
     <div id="tabList"></div>
-    <button id="btnNewTab" class="tabbtn" title="Ouvrir un autre site (Ctrl+T)">＋</button>
+    <button id="btnNewTab" class="tabbtn" title="Ouvrir un autre site (Ctrl+T)" aria-label="Nouvel onglet">＋</button>
     <span class="spacer"></span>
-    <button id="btnMosaic" class="tabbtn" title="Afficher plusieurs sites en même temps (Ctrl+M)">▦ Mosaïque</button>
+    <button id="btnMosaic" class="tabbtn" title="Afficher plusieurs sites en même temps (Ctrl+M)">▦ <span class="lbl">Mosaïque</span></button>
   </nav>
   <header id="bar" hidden>
-    <button id="btnBack" title="Précédent (Alt+←)">←</button>
-    <button id="btnFwd" title="Suivant (Alt+→)">→</button>
-    <button id="btnReload" title="Actualiser (Ctrl+R)">↻</button>
-    <button id="btnHome" title="Accueil (Ctrl+H)">⌂</button>
-    <input id="addr" type="text" spellcheck="false" autocomplete="off" placeholder="Coller une adresse puis Entrée">
+    <button id="btnBack" title="Précédent (Alt+←)" aria-label="Précédent">←</button>
+    <button id="btnFwd" title="Suivant (Alt+→)" aria-label="Suivant">→</button>
+    <button id="btnReload" title="Actualiser (Ctrl+R)" aria-label="Actualiser">↻</button>
+    <button id="btnHome" title="Accueil (Ctrl+H)" aria-label="Accueil">⌂</button>
+    <input id="addr" type="text" spellcheck="false" autocomplete="off" inputmode="url" placeholder="Coller une adresse puis Entrée" aria-label="Adresse">
     <div class="group">
-      <button id="btnZoomOut" title="Zoom − (Ctrl+-)">−</button>
+      <button id="btnZoomOut" title="Zoom − (Ctrl+-)" aria-label="Zoom moins">−</button>
       <button id="btnZoomReset" class="zoom" title="Zoom 100 % (Ctrl+0)">100 %</button>
-      <button id="btnZoomIn" title="Zoom + (Ctrl++)">+</button>
+      <button id="btnZoomIn" title="Zoom + (Ctrl++)" aria-label="Zoom plus">+</button>
     </div>
     <button id="btnBlock" class="shield" title="Activer / désactiver le blocage sur ce site">
       <span id="shieldLabel">Blocage</span> <b id="blockedCount">0</b>
     </button>
-    <button id="btnPin" title="Épingler ce site en favori">☆</button>
-    <span id="drmChip" class="chip" hidden title=""></span>
+    <button id="btnPin" title="Ajouter aux favoris" aria-label="Favori">☆</button>
+    <button id="btnLater" title="Ajouter à Ma liste" aria-label="Ma liste">＋</button>
+    <span id="drmChip" class="chip" hidden></span>
   </header>
 
+  <!-- Écran « Qui regarde ? » -->
+  <section id="chooser" aria-label="Choix du profil">
+    <h1>Qui regarde ?</h1>
+    <div id="profiles" class="profiles"></div>
+    <button id="btnManage" class="outline">Gérer les profils</button>
+  </section>
+
+  <!-- Accueil -->
   <main id="home">
     <header class="top">
       <span class="logo">AdBlock Launcher</span>
-      <form id="homeForm">
-        <input id="homeInput" type="text" spellcheck="false" autocomplete="off" autofocus
-               placeholder="Coller l’adresse d’un site puis Entrée (avec ou sans https://)">
+      <nav id="mainNav" class="mainnav" aria-label="Navigation">
+        <button data-page="home"><span class="ic">⌂</span><span class="tx">Accueil</span></button>
+        <button data-page="tv"><span class="ic">📺</span><span class="tx">Chaînes TV</span></button>
+        <button data-page="list"><span class="ic">＋</span><span class="tx">Ma liste</span></button>
+        <button data-page="fav"><span class="ic">★</span><span class="tx">Favoris</span></button>
+      </nav>
+      <form id="homeForm" role="search">
+        <input id="homeInput" type="text" spellcheck="false" autocomplete="off" inputmode="url" enterkeyhint="go"
+               placeholder="Rechercher ou coller une adresse (https://…)" aria-label="Rechercher ou coller une adresse">
       </form>
+      <button id="btnProfile" class="avatar-btn" aria-haspopup="menu" aria-label="Profil"></button>
+      <div id="profileMenu" class="menu" role="menu" hidden>
+        <button data-act="edit" role="menuitem">✎ Modifier ce profil</button>
+        <button data-act="switch" role="menuitem">⇄ Changer de profil</button>
+        <button data-act="settings" role="menuitem">⚙ Réglages</button>
+      </div>
     </header>
     <p id="homeError" class="error" role="alert" hidden></p>
-
-    <section id="hero" class="hero" hidden>
-      <div class="hero-body">
-        <p class="eyebrow">Reprendre</p>
-        <h1 id="heroTitle"></h1>
-        <p id="heroSub" class="hero-sub"></p>
-        <div class="hero-actions">
-          <button id="heroPlay" class="primary">▶ Reprendre</button>
-          <button id="heroHome">Page d’accueil du site</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="running" class="row-wrap" hidden></section>
-
-    <p id="empty" class="empty" hidden>Ta bibliothèque est vide. Colle l’adresse d’un site ci-dessus : il sera ajouté ici automatiquement, puis tu pourras le classer dans un groupe.</p>
-    <div id="rows"></div>
-    <div id="tv"></div>
-
+    <div id="page"></div>
     <footer>
       <div id="drmBanner" class="banner" hidden></div>
       <span id="filterStatus"></span>
       <button id="btnFilters" class="link">Mettre à jour les filtres</button>
       <span id="totalBlocked"></span>
     </footer>
-
-    <dialog id="dlg">
-      <form id="dlgForm" method="dialog">
-        <h3>Modifier le site</h3>
-        <label>Nom <input id="dlgTitle" type="text" maxlength="60" autocomplete="off"></label>
-        <label>Groupe <input id="dlgGroup" type="text" maxlength="40" list="groupList" autocomplete="off" placeholder="ex. Séries, Sport, Documentaires"></label>
-        <datalist id="groupList"></datalist>
-        <label class="check"><input id="dlgFav" type="checkbox"> Favori</label>
-        <p id="dlgUrl" class="hint"></p>
-        <div class="dlg-actions">
-          <button type="button" id="dlgRemove" class="danger">Retirer de la bibliothèque</button>
-          <span class="spacer"></span>
-          <button type="button" id="dlgCancel">Annuler</button>
-          <button type="submit" class="primary">Enregistrer</button>
-        </div>
-      </form>
-    </dialog>
   </main>
+
+  <dialog id="dlg">
+    <form id="dlgForm" method="dialog">
+      <h3>Modifier le site</h3>
+      <label>Nom <input id="dlgTitle" type="text" maxlength="60" autocomplete="off"></label>
+      <label>Collection <input id="dlgGroup" type="text" maxlength="40" list="groupList" autocomplete="off" placeholder="ex. Séries, Sport, Documentaires"></label>
+      <datalist id="groupList"></datalist>
+      <label class="check"><input id="dlgFav" type="checkbox"> ★ Favori</label>
+      <label class="check"><input id="dlgLater" type="checkbox"> ＋ Dans Ma liste</label>
+      <p id="dlgUrl" class="hint"></p>
+      <div class="dlg-actions">
+        <button type="button" id="dlgRemove" class="danger">Retirer</button>
+        <span class="spacer"></span>
+        <button type="button" id="dlgCancel">Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="pdlg">
+    <form id="pdlgForm" method="dialog">
+      <h3 id="pdlgTitle">Profil</h3>
+      <div id="pPreview" class="avatar big"></div>
+      <label>Nom <input id="pName" type="text" maxlength="20" autocomplete="off" placeholder="ex. Camille"></label>
+      <fieldset><legend>Avatar</legend><div id="pEmojis" class="swatches"></div></fieldset>
+      <fieldset><legend>Couleur</legend><div id="pColors" class="swatches"></div></fieldset>
+      <p id="pError" class="error" role="alert" hidden></p>
+      <div class="dlg-actions">
+        <button type="button" id="pDelete" class="danger">Supprimer</button>
+        <span class="spacer"></span>
+        <button type="button" id="pCancel">Annuler</button>
+        <button type="submit" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="sdlg">
+    <form id="sdlgForm" method="dialog">
+      <h3>Réglages</h3>
+      <label>Thème
+        <select id="sTheme"><option value="auto">Automatique (suit le système)</option><option value="dark">Sombre</option><option value="light">Clair</option></select>
+      </label>
+      <label class="check"><input id="sAsk" type="checkbox"> Demander le profil à chaque démarrage</label>
+      <p class="hint">Chaque profil a sa propre bibliothèque, ses favoris, sa liste et ses propres connexions aux sites.</p>
+      <div class="dlg-actions"><span class="spacer"></span><button type="submit" class="primary">Fermer</button></div>
+    </form>
+  </dialog>
+
   <script src="launcher.js"></script>
 </body>
 </html>

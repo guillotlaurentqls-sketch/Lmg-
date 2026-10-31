@@ -29,6 +29,14 @@ Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé pa
 | `Ctrl/Cmd + +` / `-` / `0` | zoom (mémorisé par site) |
 | `F11` | plein écran de la fenêtre (le bouton plein écran du lecteur vidéo fonctionne aussi) |
 
+### Profils, Ma liste et favoris (comme une plateforme de streaming)
+
+- **Profils** : au démarrage, « Qui regarde ? » propose les profils (jusqu’à 6, avec avatar et couleur). Chaque profil a sa **propre bibliothèque, ses favoris, sa liste et ses propres connexions aux sites** : deux personnes qui partagent l’ordinateur ne se voient pas l’une l’autre. Menu de l’avatar en haut à droite : modifier le profil, changer de profil, réglages. Supprimer un profil efface aussi ses connexions.
+- **Ma liste** (＋) : les sites à garder sous la main. **Favoris** (★) : tes préférés. **Collections** (✎) : un nom libre (« Séries », « Sport »…) qui crée une rangée sur l’accueil. Les pages **Ma liste** et **Favoris** sont dans le menu du haut.
+- **Recherche** : le champ du haut filtre ta bibliothèque et les chaînes pendant la frappe ; une adresse (`arte.tv`, `https://…`) s’ouvre avec Entrée. Les flèches du clavier passent d’une affiche à l’autre.
+- **Thème** sombre (par défaut), clair ou automatique : Réglages.
+- **Petits écrans** : l’interface s’adapte aux fenêtres étroites et au tactile (voir `docs/MOBILE.md` ; une vraie appli Android/iOS est un autre projet).
+
 ### Plusieurs sites en même temps
 
 Chaque site s’ouvre dans un **onglet** (jusqu’à 8), avec son propre compteur de blocage. Les sites restent des pages **en direct** : rien n’est copié, tu vois l’aspect réel du site, mis à jour en temps réel.
@@ -87,6 +95,7 @@ npm install
 npm start             # lance l'appli (sous Linux en root/conteneur : ajouter -- --no-sandbox)
 npm test              # tests de la normalisation des adresses
 npm run e2e           # test de bout en bout sur un site local (voir docs/ENVIRONNEMENT.md)
+npm run e2e:profiles  # profils et isolation des connexions (nécessite npm run e2e:server)
 npm run e2e:real -- https://www.arte.tv/fr/   # essai sur un vrai site, avec captures
 npm run icons         # régénère build/icon.png
 npm run dist:linux    # AppImage + deb  → dist/
@@ -103,6 +112,7 @@ Chaque `dist:*` doit être lancé sur son système : `dist:win` exige `wine` dep
 - `src/launcher/` : interface (accueil façon streaming et barre d’outils), avec une CSP stricte.
 - `src/url.js` : normalisation des adresses, notion de « même site ».
 - `src/store.js` : bibliothèque de sites et réglages dans le dossier utilisateur (les anciens favoris/historique sont convertis automatiquement).
+- `docs/MOBILE.md` : Android et iOS.
 - `src/channels.json` : chaînes TV et guides affichés sur l’accueil.
 - `src/sites.default.json` : sites du premier lancement (groupe « TV et replay »).
 
