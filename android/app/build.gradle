@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'fr.lmg.adblocklauncher'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'fr.lmg.adblocklauncher'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '0.1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets {
+        main.assets.srcDirs += layout.buildDirectory.dir('generated/web-assets')
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
+
+// L'interface (accueil, profils, catégories…) est celle de l'appli de bureau : on la copie à la compilation,
+// avec les listes de chaînes et de plateformes, pour n'avoir qu'une seule source.
+tasks.register('syncWebAssets', Copy) {
+    into layout.buildDirectory.dir('generated/web-assets')
+    from('../../src/launcher') { exclude 'index.html'; into 'launcher' }
+    from('../../src/launcher') {
+        include 'index.html'
+        into 'launcher'
+        // le pont Android doit être chargé avant l'interface
+        filter { line -> line.contains('src="launcher.js"') ? '  <script src="android-shim.js"></script>\n' + line : line }
+    }
+    from('../shim') { into 'launcher' }
+    from('../../src/channels.json') { into 'launcher' }
+    from('../../src/providers.json') { into 'launcher' }
+    from('../../src/sites.default.json') { into 'launcher' }
+}
+preBuild.dependsOn syncWebAssets

@@ -2,7 +2,7 @@
 
 const $ = (id) => document.getElementById(id);
 let state = null;
-let page = 'home'; // 'home' | 'tv' | 'list' | 'fav'
+let page = 'home'; // 'home' | 'cat' | 'tv' | 'list' | 'fav'
 let query = '';
 let manage = false; // écran des profils en mode « gérer »
 let lastSig = '';
@@ -102,6 +102,35 @@ function chanCard(ch) {
   return c;
 }
 
+function catCard(c) {
+  const k = el('div', 'card chan');
+  k.tabIndex = 0;
+  k.setAttribute('role', 'button');
+  k.setAttribute('aria-label', `Ouvrir ${c.title} sur ${c.provider}`);
+  paint(k, { key: c.cat + c.title, color: '' });
+  k.append(el('span', 'big', letter(c.title)));
+  const meta = el('div', 'meta');
+  meta.append(el('div', 't', c.title), el('div', 'u', c.provider));
+  k.append(meta);
+  const open = () => openFrom(c.url, { chain: true });
+  k.addEventListener('click', open);
+  k.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') open(); });
+  return k;
+}
+
+const allCategories = () => (state.providers || []).flatMap((p) => (p.categories || []).map((c) => ({ ...c, provider: p.title })));
+
+function searchChips(q) {
+  const box = el('div', 'chips');
+  box.append(el('span', 'chips-l', `Chercher « ${q.trim()} » sur :`));
+  for (const p of (state.providers || []).filter((x) => x.search)) {
+    const b = el('button', 'chip2', p.title);
+    b.addEventListener('click', () => openFrom(p.search.replace('{q}', encodeURIComponent(q.trim())), { chain: true }));
+    box.append(b);
+  }
+  return box;
+}
+
 function runningCard(t) {
   const c = el('div', 'card chan running');
   c.tabIndex = 0;
@@ -198,6 +227,12 @@ function renderHome() {
   for (const g of groups) root.append(row(g, lib.filter((e) => e.group === g).sort(byTitle).map(card)));
   const others = lib.filter((e) => !e.group).sort(byTitle);
   if (others.length) root.append(row('Mes sites', others.map(card), `${others.length}`));
+  const cats = allCategories();
+  if (cats.length) {
+    const more = el('button', 'act', 'Toutes les catégories →');
+    more.addEventListener('click', () => go('cat'));
+    root.append(row('Films, séries, documentaires', cats.slice(0, 14).map(catCard), '', more));
+  }
   if (state.channels.length) {
     const first = state.channels.filter((c) => c.group !== 'Guide TV').slice(0, 14);
     const more = el('button', 'act', 'Toutes les chaînes →');
@@ -205,6 +240,15 @@ function renderHome() {
     root.append(row('Chaînes TV', first.map(chanCard), '', more));
   }
   $('groupList').replaceChildren(...groups.map((g) => { const o = document.createElement('option'); o.value = g; return o; }));
+}
+
+function renderCategories() {
+  const root = $('page');
+  root.append(el('h2', 'pagehead', 'Catégories'));
+  root.append(el('p', 'pagesub', 'Films, séries, documentaires… : chaque carte ouvre la page de la catégorie sur le site de la plateforme, en direct. Pour un titre précis, utilise la recherche.'));
+  const cats = allCategories();
+  const names = [...new Set(cats.map((c) => c.cat))];
+  for (const n of names) root.append(row(n, cats.filter((c) => c.cat === n).map(catCard)));
 }
 
 function renderTv() {
@@ -228,9 +272,12 @@ function renderSearch() {
   const q = norm(query);
   const libHits = state.library.filter((e) => norm(`${e.title} ${e.group} ${hostOf(e.url)}`).includes(q));
   const chanHits = state.channels.filter((c) => norm(`${c.title} ${c.group} ${hostOf(c.url)}`).includes(q));
+  const catHits = allCategories().filter((c) => norm(`${c.title} ${c.cat} ${c.provider}`).includes(q));
   root.append(el('h2', 'pagehead', `Résultats pour « ${query.trim()} »`));
-  if (!libHits.length && !chanHits.length) {
-    root.append(el('p', 'empty', 'Aucun résultat dans ta bibliothèque ni dans les chaînes. Pour ouvrir un site, colle son adresse complète (ex. arte.tv) puis Entrée.'));
+  root.append(searchChips(query));
+  if (catHits.length) { root.append(el('h3', 'sechead', 'Catégories')); root.append(grid(catHits.map(catCard))); }
+  if (!libHits.length && !chanHits.length && !catHits.length) {
+    root.append(el('p', 'empty', 'Rien dans ta bibliothèque, les chaînes ou les catégories. Lance la recherche sur une plateforme avec les boutons ci-dessus, ou colle une adresse complète (ex. arte.tv) puis Entrée.'));
     return;
   }
   if (libHits.length) { root.append(el('h3', 'sechead', 'Ma bibliothèque')); root.append(grid(libHits.map(card))); }
@@ -241,6 +288,7 @@ function renderPage() {
   const root = $('page');
   root.replaceChildren();
   if (query.trim() && !looksLikeUrl(query)) return renderSearch();
+  if (page === 'cat') return renderCategories();
   if (page === 'tv') return renderTv();
   if (page === 'list') return renderCollection('Ma liste', 'Les sites que tu veux garder sous la main. Ajoute-en avec « ＋ » sur une affiche.', state.library.filter((e) => e.later).sort((a, b) => a.title.localeCompare(b.title, 'fr')), 'Ta liste est vide. Survole (ou touche) une affiche et utilise « ＋ » pour l’ajouter ici.');
   if (page === 'fav') return renderCollection('Favoris', 'Tes sites préférés, avec ★.', state.library.filter((e) => e.favorite).sort((a, b) => a.title.localeCompare(b.title, 'fr')), 'Aucun favori pour le moment. Utilise ☆ sur une affiche.');
@@ -374,7 +422,7 @@ function signature(s) {
   return JSON.stringify([s.mode, s.profile && s.profile.id, s.profiles, s.settings, page, query, manage,
     s.library.map((e) => [e.key, e.title, e.group, e.favorite, e.later, e.lastOpened, e.color, e.icon.length]),
     s.tabs.map((t) => [t.id, t.title, t.audible, t.icon.length]), s.activeId, s.mosaic,
-    s.drm.status, s.filters.status, s.filters.updatedAt, Math.floor(s.totalBlocked / 25)]);
+    (s.providers || []).length, s.drm.status, s.filters.status, s.filters.updatedAt, Math.floor(s.totalBlocked / 25)]);
 }
 
 function render() {
@@ -482,8 +530,9 @@ $('homeForm').addEventListener('submit', async (ev) => {
     if (r && r.ok) { query = ''; $('homeInput').value = ''; }
     return;
   }
-  const first = $('page').querySelector('.card');
+  const first = $('page').querySelector('.grid .card');
   if (first) first.click(); // Entrée ouvre le premier résultat
+  else { const chip = $('page').querySelector('.chip2'); if (chip) chip.click(); } // sinon, recherche sur la première plateforme
 });
 $('homeInput').addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { query = ''; $('homeInput').value = ''; lastSig = ''; render(); } });
 
@@ -523,5 +572,13 @@ document.addEventListener('keydown', (ev) => {
   }
   if (target) { ev.preventDefault(); target.focus(); target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); }
 });
+
+// Bouton « Retour » d'Android : remonte à l'accueil avant de quitter l'appli.
+window.__backPressed = () => {
+  if (!state || state.mode === 'profiles') return false;
+  if (document.querySelector('dialog[open]')) { document.querySelectorAll('dialog[open]').forEach((d) => d.close()); return true; }
+  if (query.trim() || page !== 'home') { go('home'); return true; }
+  return false;
+};
 
 window.launcher.getState().then((s) => { state = s; render(); if (s.mode === 'home') $('homeInput').focus(); });

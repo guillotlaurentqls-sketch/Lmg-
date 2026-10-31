@@ -248,3 +248,9 @@ dialog legend { color: var(--muted); font-size: 12px; padding: 0; margin-bottom:
   .dlg-actions { flex-wrap: wrap; }
   .profile { width: 38vw; max-width: 150px; }
 }
+
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 4vw 4px; }
+.chips-l { color: var(--muted); font-size: 13px; }
+.chip2 { height: 34px; border-radius: 999px; background: var(--panel2); font-weight: 600; }
+.chip2:hover { background: var(--acc); color: var(--acc-ink); }
+@media (max-width: 699px) { .chips { margin: 10px 14px 4px; } .chip2 { height: 40px; } }

@@ -40,6 +40,7 @@ const filters = { status: 'loading', updatedAt: null, error: '' };
 const readJson = (f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8'));
 const defaultSites = readJson('sites.default.json');
 const channels = readJson('channels.json');
+const providers = readJson('providers.json'); // plateformes légales : pages de recherche et de catégories
 
 const active = () => tabs.find((t) => t.id === activeId) || null;
 const tabByWcId = (id) => tabs.find((t) => t.wc.id === id) || null;
@@ -642,6 +643,7 @@ function snapshot() {
     activeId,
     library,
     channels,
+    providers,
     profile: prof ? { id: prof.id, name: prof.name, emoji: prof.emoji, color: prof.color } : null,
     profiles: store.data.profiles.map((x) => ({ id: x.id, name: x.name, emoji: x.emoji, color: x.color, count: x.library.length })),
     settings: { theme: store.data.theme, askProfile: store.data.askProfile },

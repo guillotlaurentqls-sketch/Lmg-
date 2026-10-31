@@ -33,7 +33,7 @@ Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé pa
 
 - **Profils** : au démarrage, « Qui regarde ? » propose les profils (jusqu’à 6, avec avatar et couleur). Chaque profil a sa **propre bibliothèque, ses favoris, sa liste et ses propres connexions aux sites** : deux personnes qui partagent l’ordinateur ne se voient pas l’une l’autre. Menu de l’avatar en haut à droite : modifier le profil, changer de profil, réglages. Supprimer un profil efface aussi ses connexions.
 - **Ma liste** (＋) : les sites à garder sous la main. **Favoris** (★) : tes préférés. **Collections** (✎) : un nom libre (« Séries », « Sport »…) qui crée une rangée sur l’accueil. Les pages **Ma liste** et **Favoris** sont dans le menu du haut.
-- **Recherche** : le champ du haut filtre ta bibliothèque et les chaînes pendant la frappe ; une adresse (`arte.tv`, `https://…`) s’ouvre avec Entrée. Les flèches du clavier passent d’une affiche à l’autre.
+- **Recherche** : le champ du haut filtre ta bibliothèque, les chaînes et les catégories pendant la frappe et propose de lancer la recherche sur ARTE, France.tv, M6+ ou Lumni (page de recherche officielle, en direct) ; une adresse (`arte.tv`, `https://…`) s’ouvre avec Entrée. Les flèches du clavier passent d’une affiche à l’autre.
 - **Thème** sombre (par défaut), clair ou automatique : Réglages.
 - **Petits écrans** : l’interface s’adapte aux fenêtres étroites et au tactile (voir `docs/MOBILE.md` ; une vraie appli Android/iOS est un autre projet).
 
@@ -58,6 +58,10 @@ La liste est dans `src/channels.json` (titre, groupe, adresse) : ajoute ou retir
 - **Filtres mis à jour automatiquement** au démarrage puis toutes les 6 heures ; la dernière liste reste utilisée hors ligne. Le pied de l’accueil indique leur état.
 - **Désactiver le blocage sur un site** (bouton bouclier) si un site ne s’affiche pas correctement ; le choix est mémorisé.
 - Caméra, micro, position et notifications sont toujours refusés. Seules les adresses `http` et `https` sont acceptées.
+
+## Android (prototype)
+
+Une version Android existe (`android/`, voir **`docs/ANDROID.md`**) : même interface, recherche par plateforme, catégories, profils, Ma liste, sites en direct sans pubs, DRM Widevine du téléphone, et un bouton pour **caster l’écran** sur une Chromecast. C’est un prototype jamais lancé sur un vrai téléphone : l’APK se télécharge dans l’onglet **Actions → APK Android (prototype)** du dépôt.
 
 ## Installer
 
@@ -112,7 +116,8 @@ Chaque `dist:*` doit être lancé sur son système : `dist:win` exige `wine` dep
 - `src/launcher/` : interface (accueil façon streaming et barre d’outils), avec une CSP stricte.
 - `src/url.js` : normalisation des adresses, notion de « même site ».
 - `src/store.js` : bibliothèque de sites et réglages dans le dossier utilisateur (les anciens favoris/historique sont convertis automatiquement).
-- `docs/MOBILE.md` : Android et iOS.
+- `android/` et `docs/ANDROID.md` : prototype Android. `docs/MOBILE.md` : Android et iOS en général.
+- `src/providers.json` : plateformes (recherche et catégories) affichées sur l’accueil.
 - `src/channels.json` : chaînes TV et guides affichés sur l’accueil.
 - `src/sites.default.json` : sites du premier lancement (groupe « TV et replay »).
 
