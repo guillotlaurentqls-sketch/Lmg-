@@ -63,6 +63,12 @@ La liste est dans `src/channels.json` (titre, groupe, adresse) : ajoute ou retir
 
 Une version Android existe (`android/`, voir **`docs/ANDROID.md`**) : même interface, recherche par plateforme, catégories, profils, Ma liste, sites en direct sans pubs, DRM Widevine du téléphone, et un bouton pour **caster l’écran** sur une Chromecast. C’est un prototype jamais lancé sur un vrai téléphone : l’APK se télécharge dans l’onglet **Actions → APK Android (prototype)** du dépôt.
 
+## Version web
+
+`npm run web:build` assemble la même interface en une seule page (`web/dist/index.html`, installable sur l’écran d’accueil d’un téléphone, avec `manifest.webmanifest` et icônes). On y retrouve profils, Ma liste, favoris, recherche, catégories et chaînes. **Limites** : une page web ne peut ni afficher les autres sites à l’intérieur de l’appli ni bloquer leurs pubs ; chaque site s’ouvre donc dans un nouvel onglet du navigateur, qui n’a pas le blocage de l’appli (utilise un bloqueur dans ton navigateur, par exemple Firefox avec uBlock Origin). Les données restent dans le navigateur de l’appareil.
+
+Pour l’héberger : GitHub Pages (**Settings → Pages**) sert un dépôt public, ou un dépôt privé avec certains abonnements GitHub ; publie le contenu de `web/dist/`. Le fichier `web/dist/artifact.html` est la même page sans l’enveloppe `<html>`.
+
 ## Installer
 
 Les installateurs se trouvent dans l’onglet **Actions → Installateurs** du dépôt GitHub (lancer « Run workflow », puis télécharger les fichiers en bas de l’exécution), ou se construisent soi-même (voir plus bas).

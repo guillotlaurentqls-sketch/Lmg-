@@ -319,6 +319,18 @@ function renderHeader() {
 }
 
 function renderFooter() {
+  if (state.web) { // version web : les sites s'ouvrent dans le navigateur, sans le blocage de l'appli
+    $('filterStatus').textContent = '';
+    $('totalBlocked').textContent = '';
+    $('btnFilters').hidden = true;
+    const wb = $('drmBanner');
+    wb.hidden = false;
+    wb.replaceChildren();
+    const b = document.createElement('b');
+    b.textContent = 'Version web. ';
+    wb.append(b, 'Les sites s’ouvrent dans un nouvel onglet de ton navigateur, sans le blocage des pubs de l’appli : active un bloqueur dans ton navigateur (par exemple Firefox avec uBlock Origin), ou installe l’appli Android ou ordinateur.');
+    return;
+  }
   const f = state.filters;
   const when = f.updatedAt ? new Date(f.updatedAt).toLocaleString('fr-FR') : '';
   const text = {
@@ -480,6 +492,7 @@ function editProfile(p) {
   $('pdlgTitle').textContent = p ? 'Modifier le profil' : 'Nouveau profil';
   $('pName').value = p ? p.name : '';
   $('pDelete').hidden = !p || state.profiles.length <= 1;
+  armDelete(false);
   $('pError').hidden = true;
   paintProfileForm();
   $('pdlg').showModal();
@@ -492,9 +505,20 @@ $('pdlgForm').addEventListener('submit', async (ev) => {
   $('pdlg').close();
 });
 $('pCancel').addEventListener('click', () => $('pdlg').close());
+let deleteArmed = false;
+function armDelete(on) {
+  deleteArmed = on;
+  $('pDelete').textContent = on ? 'Confirmer la suppression' : 'Supprimer';
+}
 $('pDelete').addEventListener('click', async () => {
   if (!pEditing) return;
-  if (!confirm(`Supprimer le profil « ${pEditing.name} », sa bibliothèque et ses connexions aux sites ?`)) return;
+  if (!deleteArmed) { // premier appui : on demande confirmation dans la page
+    armDelete(true);
+    $('pError').textContent = `Supprimer « ${pEditing.name} » efface sa bibliothèque, sa liste et ses connexions. Appuie encore pour confirmer.`;
+    $('pError').hidden = false;
+    return;
+  }
+  armDelete(false);
   const r = await window.launcher.deleteProfile(pEditing.id);
   if (r && !r.ok) { $('pError').textContent = r.error; $('pError').hidden = false; return; }
   $('pdlg').close();
