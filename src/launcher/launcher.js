@@ -2,7 +2,7 @@
 
 const $ = (id) => document.getElementById(id);
 let state = null;
-let page = 'home'; // 'home' | 'cat' | 'tv' | 'list' | 'fav'
+let page = 'home'; // 'home' | 'abos' | 'cat' | 'tv' | 'list' | 'fav'
 let query = '';
 let manage = false; // écran des profils en mode « gérer »
 let lastSig = '';
@@ -118,12 +118,51 @@ function catCard(c) {
   return k;
 }
 
-const allCategories = () => (state.providers || []).flatMap((p) => (p.categories || []).map((c) => ({ ...c, provider: p.title })));
+// Abonnements (Netflix, Prime Video, Canal+…) : seuls ceux que la personne a cochés apparaissent dans la recherche et les catégories.
+const ownedServices = () => new Set((state.profile && state.profile.services) || []);
+const serviceList = () => (state.providers || []).filter((p) => p.kind === 'service');
+const visibleProvider = (p) => p.kind !== 'service' || ownedServices().has(p.id);
+const allCategories = () => (state.providers || []).filter(visibleProvider).flatMap((p) => (p.categories || []).map((c) => ({ ...c, provider: p.title })));
+
+function serviceCard(p) {
+  const owned = ownedServices().has(p.id);
+  const c = el('div', 'card chan svc' + (owned ? ' owned' : ''));
+  c.tabIndex = 0;
+  c.setAttribute('role', 'button');
+  c.setAttribute('aria-label', `Ouvrir ${p.title}`);
+  paint(c, { key: p.id, color: p.color });
+  c.append(el('span', 'big', letter(p.title)));
+  const meta = el('div', 'meta');
+  meta.append(el('div', 't', p.title), el('div', 'u', hostOf(p.url)));
+  c.append(meta);
+  if (owned) c.append(el('span', 'badge', '✓ Mon abonnement'));
+  const tools = el('div', 'tools');
+  tools.append(btn(owned ? 'on' : '', owned ? '✓' : '＋', owned ? 'Retirer de mes abonnements' : 'Ajouter à mes abonnements', () => window.launcher.toggleService(p.id)));
+  c.append(tools);
+  const open = () => openFrom(p.url, { chain: true });
+  c.addEventListener('click', open);
+  c.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') open(); });
+  return c;
+}
+
+function addServicesCard() {
+  const c = el('div', 'card chan svc');
+  c.tabIndex = 0;
+  c.setAttribute('role', 'button');
+  paint(c, { key: 'abos', color: '#3a4256' });
+  c.append(el('span', 'big', '＋'));
+  const meta = el('div', 'meta');
+  meta.append(el('div', 't', 'Ajouter mes abonnements'), el('div', 'u', 'Netflix, Prime Video, Canal+…'));
+  c.append(meta);
+  c.addEventListener('click', () => go('abos'));
+  c.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go('abos'); });
+  return c;
+}
 
 function searchChips(q) {
   const box = el('div', 'chips');
   box.append(el('span', 'chips-l', `Chercher « ${q.trim()} » sur :`));
-  for (const p of (state.providers || []).filter((x) => x.search)) {
+  for (const p of (state.providers || []).filter((x) => x.search && visibleProvider(x))) {
     const b = el('button', 'chip2', p.title);
     b.addEventListener('click', () => openFrom(p.search.replace('{q}', encodeURIComponent(q.trim())), { chain: true }));
     box.append(b);
@@ -218,11 +257,21 @@ function renderHome() {
   const recent = lib.filter((e) => e.lastOpened).sort((a, b) => b.lastOpened - a.lastOpened);
   root.append(hero(recent));
   const running = runningRow(); if (running) root.append(running);
+  if (serviceList().length) {
+    const mine = serviceList().filter((p) => ownedServices().has(p.id));
+    const manage = el('button', 'act', mine.length ? 'Gérer →' : 'Choisir →');
+    manage.addEventListener('click', () => go('abos'));
+    root.append(row('Mes abonnements', mine.length ? mine.map(serviceCard) : [addServicesCard()], mine.length ? `${mine.length}` : '', manage));
+  }
   if (recent.length) root.append(row('Reprendre', recent.slice(0, 14).map(card)));
   const later = lib.filter((e) => e.later).sort(byTitle);
   if (later.length) root.append(row('Ma liste', later.map(card), `${later.length}`));
   const favs = lib.filter((e) => e.favorite).sort(byTitle);
-  if (favs.length) root.append(row('Favoris', favs.map(card), `${favs.length}`));
+  if (favs.length) {
+    const all = el('button', 'act', 'Tout voir →');
+    all.addEventListener('click', () => go('fav'));
+    root.append(row('Favoris', favs.map(card), `${favs.length}`, all));
+  }
   const groups = [...new Set(lib.map((e) => e.group).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
   for (const g of groups) root.append(row(g, lib.filter((e) => e.group === g).sort(byTitle).map(card)));
   const others = lib.filter((e) => !e.group).sort(byTitle);
@@ -240,6 +289,22 @@ function renderHome() {
     root.append(row('Chaînes TV', first.map(chanCard), '', more));
   }
   $('groupList').replaceChildren(...groups.map((g) => { const o = document.createElement('option'); o.value = g; return o; }));
+}
+
+function renderAbos() {
+  const root = $('page');
+  const owned = ownedServices();
+  root.append(el('h2', 'pagehead', 'Abonnements'));
+  root.append(el('p', 'pagesub', 'Coche les services auxquels tu es abonné : ils rejoignent ton accueil, la recherche et les catégories. Tu te connectes sur le site du service lui-même ; l’appli ne voit et ne garde jamais tes identifiants.'));
+  if (!state.web && state.drm && state.drm.status === 'missing') {
+    root.append(el('p', 'note', 'Cette version de l’appli ne sait pas lire les contenus protégés (Widevine absent) : Netflix, Prime Video ou Canal+ s’y connectent mais ne liront pas les films. Utilise plutôt la version web dans ton navigateur, ou l’appli Android.'));
+  } else if (state.web) {
+    root.append(el('p', 'note', 'Dans la version web, chaque service s’ouvre dans un onglet de ton navigateur, où ta connexion et la lecture fonctionnent comme d’habitude.'));
+  }
+  const mine = serviceList().filter((p) => owned.has(p.id));
+  const others = serviceList().filter((p) => !owned.has(p.id));
+  if (mine.length) { root.append(el('h3', 'sechead', 'Mes abonnements')); root.append(grid(mine.map(serviceCard))); }
+  if (others.length) { root.append(el('h3', 'sechead', mine.length ? 'Autres services' : 'Choisis tes services')); root.append(grid(others.map(serviceCard))); }
 }
 
 function renderCategories() {
@@ -288,6 +353,7 @@ function renderPage() {
   const root = $('page');
   root.replaceChildren();
   if (query.trim() && !looksLikeUrl(query)) return renderSearch();
+  if (page === 'abos') return renderAbos();
   if (page === 'cat') return renderCategories();
   if (page === 'tv') return renderTv();
   if (page === 'list') return renderCollection('Ma liste', 'Les sites que tu veux garder sous la main. Ajoute-en avec « ＋ » sur une affiche.', state.library.filter((e) => e.later).sort((a, b) => a.title.localeCompare(b.title, 'fr')), 'Ta liste est vide. Survole (ou touche) une affiche et utilise « ＋ » pour l’ajouter ici.');
@@ -433,7 +499,7 @@ function signature(s) {
   // On ne redessine l'accueil que si quelque chose de visible a changé (évite de perdre le défilement).
   return JSON.stringify([s.mode, s.profile && s.profile.id, s.profiles, s.settings, page, query, manage,
     s.library.map((e) => [e.key, e.title, e.group, e.favorite, e.later, e.lastOpened, e.color, e.icon.length]),
-    s.tabs.map((t) => [t.id, t.title, t.audible, t.icon.length]), s.activeId, s.mosaic,
+    s.tabs.map((t) => [t.id, t.title, t.audible, t.icon.length]), s.activeId, s.mosaic, s.profile && s.profile.services,
     (s.providers || []).length, s.drm.status, s.filters.status, s.filters.updatedAt, Math.floor(s.totalBlocked / 25)]);
 }
 

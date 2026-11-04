@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('launcher', {
   toggleBlocking: () => call('block:toggle'),
   toggleFavorite: (url) => call('fav:toggle', url),
   toggleLater: (url) => call('later:toggle', url),
+  toggleService: (id) => call('service:toggle', id),
   selectProfile: (id) => call('profile:select', id),
   openChooser: () => call('profile:chooser'),
   saveProfile: (id, data) => call('profile:save', id, data),

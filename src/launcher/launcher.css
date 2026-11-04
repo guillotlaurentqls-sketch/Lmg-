@@ -254,3 +254,10 @@ dialog legend { color: var(--muted); font-size: 12px; padding: 0; margin-bottom:
 .chip2 { height: 34px; border-radius: 999px; background: var(--panel2); font-weight: 600; }
 .chip2:hover { background: var(--acc); color: var(--acc-ink); }
 @media (max-width: 699px) { .chips { margin: 10px 14px 4px; } .chip2 { height: 40px; } }
+
+.note { margin: 10px 4vw 0; padding: 10px 14px; border: 1px solid var(--warn); border-radius: 12px; color: var(--warn); line-height: 1.5; }
+.card.svc.owned { border-color: var(--ok); }
+@media (max-width: 699px) {
+  .note { margin: 10px 14px 0; }
+  .mainnav button[data-page="fav"] { display: none; } /* Favoris reste accessible depuis l'accueil (« Tout voir ») */
+}

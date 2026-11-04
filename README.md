@@ -37,6 +37,14 @@ Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé pa
 - **Thème** sombre (par défaut), clair ou automatique : Réglages.
 - **Petits écrans** : l’interface s’adapte aux fenêtres étroites et au tactile (voir `docs/MOBILE.md` ; une vraie appli Android/iOS est un autre projet).
 
+### Abonnements (Netflix, Prime Video, Canal+…)
+
+La page **Abonnements** rassemble tes services en un seul endroit : coche ceux que tu as (Netflix, Prime Video, Canal+, Disney+, Apple TV+, Paramount+, Crunchyroll, Molotov, YouTube). Ils apparaissent alors sur l’accueil (rangée « Mes abonnements »), dans la recherche (une puce « Chercher sur Netflix… ») et dans les catégories (genres Netflix). Chaque profil a ses propres abonnements.
+
+- Tu te connectes **sur le site du service**. L’appli ne voit et ne garde jamais tes identifiants : elle ne retient que les services cochés.
+- Elle n’affiche pas les catalogues de ces services dans sa propre interface (ils sont réservés aux abonnés et sans accès public) : la recherche et les catégories ouvrent les pages du service, où tu es connecté.
+- **Lecture** : ces services protègent leurs films par DRM (Widevine). Ils ne se lisent donc **pas** dans l’appli de bureau (Electron sans Widevine). Ils fonctionnent dans la **version web** (ton navigateur) et, selon le service et le téléphone, dans l’appli Android, ce qui n’est pas encore vérifié.
+
 ### Plusieurs sites en même temps
 
 Chaque site s’ouvre dans un **onglet** (jusqu’à 8), avec son propre compteur de blocage. Les sites restent des pages **en direct** : rien n’est copié, tu vois l’aspect réel du site, mis à jour en temps réel.

@@ -490,6 +490,16 @@ function removeEntry(key) {
   store.save(); scheduleState();
 }
 
+/** Les abonnements que la personne a (Netflix, Prime Video…), par profil : on ne garde que l'identifiant du service, jamais d'identifiant de connexion. */
+function toggleService(id) {
+  const p = profile();
+  if (!p || !providers.some((x) => x.id === id && x.kind === 'service')) return;
+  p.services = p.services || [];
+  const i = p.services.indexOf(id);
+  if (i >= 0) p.services.splice(i, 1); else p.services.push(id);
+  store.save(); scheduleState();
+}
+
 function toggleFlag(url, flag) {
   const n = normalizeUrl(url);
   if (!n.ok || !profile()) return;
@@ -644,7 +654,7 @@ function snapshot() {
     library,
     channels,
     providers,
-    profile: prof ? { id: prof.id, name: prof.name, emoji: prof.emoji, color: prof.color } : null,
+    profile: prof ? { id: prof.id, name: prof.name, emoji: prof.emoji, color: prof.color, services: prof.services || [] } : null,
     profiles: store.data.profiles.map((x) => ({ id: x.id, name: x.name, emoji: x.emoji, color: x.color, count: x.library.length })),
     settings: { theme: store.data.theme, askProfile: store.data.askProfile },
     filters: { ...filters },
@@ -682,6 +692,7 @@ function registerIpc() {
   handle('mosaic:toggle', () => setMosaic(!mosaic));
   handle('fav:toggle', (url) => toggleFlag(String(url), 'favorite'));
   handle('later:toggle', (url) => toggleFlag(String(url), 'later'));
+  handle('service:toggle', (id) => toggleService(String(id)));
   handle('profile:select', (id) => selectProfile(String(id)));
   handle('profile:chooser', () => openChooser());
   handle('profile:save', (id, data) => saveProfile(id == null ? null : String(id), data));
@@ -875,6 +886,7 @@ if (!gotLock) {
       d.profiles.push({ id: 'p1', name: 'Moi', emoji: '🙂', color: '#4f7cff', createdAt: Date.now(), library: seedLibrary() });
     }
     for (const p of d.profiles) {
+      p.services = Array.isArray(p.services) ? p.services : [];
       for (const e of p.library) { // entrées d'avant l'adaptation et les listes
         if (e.titleAuto === undefined) e.titleAuto = e.title === autoTitle(e.url);
         e.icon = e.icon || ''; e.iconUrl = e.iconUrl || ''; e.color = e.color || ''; e.later = !!e.later;

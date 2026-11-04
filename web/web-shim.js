@@ -99,7 +99,7 @@
       canGoBack: false, canGoForward: false, zoom: 100, siteKey: '', blockingEnabled: true, disabledSites: [],
       pageBlocked: 0, popupsBlocked: 0, totalBlocked: data.totalBlocked, error: null,
       tabs, activeId, library: lib(), channels, providers,
-      profile: prof ? { id: prof.id, name: prof.name, emoji: prof.emoji, color: prof.color } : null,
+      profile: prof ? { id: prof.id, name: prof.name, emoji: prof.emoji, color: prof.color, services: prof.services || [] } : null,
       profiles: data.profiles.map((x) => ({ id: x.id, name: x.name, emoji: x.emoji, color: x.color, count: x.library.length })),
       settings: { theme: data.theme, askProfile: data.askProfile },
       filters: { status: blockInfo.status, updatedAt: blockInfo.updatedAt || null, error: blockInfo.error || '' },
@@ -152,6 +152,7 @@
     home: noop, back: noop, forward: noop, reload: noop, zoomIn: noop, zoomOut: noop, zoomReset: noop,
     toggleBlocking: noop, showView: noop, toggleMosaic: noop,
     toggleFavorite: (url) => { const e = findEntry(url); if (e) mutate(() => { e.favorite = !e.favorite; }); return noop(); },
+    toggleService: (id) => { const p = profile(); if (p && providers.some((x) => x.id === id && x.kind === 'service')) mutate(() => { p.services = p.services || []; const i = p.services.indexOf(id); if (i >= 0) p.services.splice(i, 1); else p.services.push(id); }); return noop(); },
     toggleLater: (url) => { const e = findEntry(url); if (e) mutate(() => { e.later = !e.later; }); return noop(); },
     updateEntry: (key, patch) => {
       const e = lib().find((x) => x.key === key);

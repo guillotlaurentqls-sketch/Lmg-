@@ -1,45 +1,225 @@
 [
   {
-    "id": "arte", "title": "ARTE", "url": "https://www.arte.tv/fr/",
+    "id": "arte",
+    "title": "ARTE",
+    "url": "https://www.arte.tv/fr/",
     "search": "https://www.arte.tv/fr/search/?q={q}",
     "categories": [
-      { "cat": "Films", "title": "Cinéma", "url": "https://www.arte.tv/fr/videos/cinema/" },
-      { "cat": "Séries", "title": "Séries et fictions", "url": "https://www.arte.tv/fr/videos/series-et-fictions/" },
-      { "cat": "Documentaires", "title": "Documentaires et reportages", "url": "https://www.arte.tv/fr/videos/documentaires-et-reportages/" },
-      { "cat": "Documentaires", "title": "Voyages et découvertes", "url": "https://www.arte.tv/fr/videos/voyages-et-decouvertes/" },
-      { "cat": "Culture et spectacles", "title": "Culture et pop", "url": "https://www.arte.tv/fr/videos/culture-et-pop/" },
-      { "cat": "Histoire et sciences", "title": "Histoire", "url": "https://www.arte.tv/fr/videos/histoire/" },
-      { "cat": "Histoire et sciences", "title": "Sciences", "url": "https://www.arte.tv/fr/videos/sciences/" },
-      { "cat": "Info et société", "title": "Info et société", "url": "https://www.arte.tv/fr/videos/info-et-societe/" },
-      { "cat": "Émissions", "title": "Émissions", "url": "https://www.arte.tv/fr/videos/emissions/" }
-    ]
+      {
+        "cat": "Films",
+        "title": "Cinéma",
+        "url": "https://www.arte.tv/fr/videos/cinema/"
+      },
+      {
+        "cat": "Séries",
+        "title": "Séries et fictions",
+        "url": "https://www.arte.tv/fr/videos/series-et-fictions/"
+      },
+      {
+        "cat": "Documentaires",
+        "title": "Documentaires et reportages",
+        "url": "https://www.arte.tv/fr/videos/documentaires-et-reportages/"
+      },
+      {
+        "cat": "Documentaires",
+        "title": "Voyages et découvertes",
+        "url": "https://www.arte.tv/fr/videos/voyages-et-decouvertes/"
+      },
+      {
+        "cat": "Culture et spectacles",
+        "title": "Culture et pop",
+        "url": "https://www.arte.tv/fr/videos/culture-et-pop/"
+      },
+      {
+        "cat": "Histoire et sciences",
+        "title": "Histoire",
+        "url": "https://www.arte.tv/fr/videos/histoire/"
+      },
+      {
+        "cat": "Histoire et sciences",
+        "title": "Sciences",
+        "url": "https://www.arte.tv/fr/videos/sciences/"
+      },
+      {
+        "cat": "Info et société",
+        "title": "Info et société",
+        "url": "https://www.arte.tv/fr/videos/info-et-societe/"
+      },
+      {
+        "cat": "Émissions",
+        "title": "Émissions",
+        "url": "https://www.arte.tv/fr/videos/emissions/"
+      }
+    ],
+    "kind": "free"
   },
   {
-    "id": "francetv", "title": "France.tv", "url": "https://www.france.tv/",
+    "id": "francetv",
+    "title": "France.tv",
+    "url": "https://www.france.tv/",
     "search": "https://www.france.tv/recherche/?q={q}",
     "categories": [
-      { "cat": "Films", "title": "Films", "url": "https://www.france.tv/films/" },
-      { "cat": "Séries", "title": "Séries et fictions", "url": "https://www.france.tv/series-et-fictions/" },
-      { "cat": "Documentaires", "title": "Documentaires", "url": "https://www.france.tv/documentaires/" },
-      { "cat": "Jeunesse", "title": "Enfants", "url": "https://www.france.tv/enfants/" },
-      { "cat": "Culture et spectacles", "title": "Spectacles et culture", "url": "https://www.france.tv/spectacles-et-culture/" },
-      { "cat": "Sport", "title": "Sport", "url": "https://www.france.tv/sport/" }
-    ]
+      {
+        "cat": "Films",
+        "title": "Films",
+        "url": "https://www.france.tv/films/"
+      },
+      {
+        "cat": "Séries",
+        "title": "Séries et fictions",
+        "url": "https://www.france.tv/series-et-fictions/"
+      },
+      {
+        "cat": "Documentaires",
+        "title": "Documentaires",
+        "url": "https://www.france.tv/documentaires/"
+      },
+      {
+        "cat": "Jeunesse",
+        "title": "Enfants",
+        "url": "https://www.france.tv/enfants/"
+      },
+      {
+        "cat": "Culture et spectacles",
+        "title": "Spectacles et culture",
+        "url": "https://www.france.tv/spectacles-et-culture/"
+      },
+      {
+        "cat": "Sport",
+        "title": "Sport",
+        "url": "https://www.france.tv/sport/"
+      }
+    ],
+    "kind": "free"
   },
   {
-    "id": "m6", "title": "M6+", "url": "https://www.m6.fr/",
+    "id": "m6",
+    "title": "M6+",
+    "url": "https://www.m6.fr/",
     "search": "https://www.m6.fr/recherche?q={q}",
-    "categories": []
+    "categories": [],
+    "kind": "free"
   },
   {
-    "id": "lumni", "title": "Lumni", "url": "https://www.lumni.fr/",
+    "id": "lumni",
+    "title": "Lumni",
+    "url": "https://www.lumni.fr/",
     "search": "https://www.lumni.fr/recherche?q={q}",
+    "categories": [],
+    "kind": "free"
+  },
+  {
+    "id": "pluto",
+    "title": "Pluto TV",
+    "url": "https://pluto.tv/fr/on-demand",
+    "categories": [
+      {
+        "cat": "Films",
+        "title": "À la demande",
+        "url": "https://pluto.tv/fr/on-demand"
+      }
+    ],
+    "kind": "free"
+  },
+  {
+    "id": "netflix",
+    "kind": "service",
+    "title": "Netflix",
+    "url": "https://www.netflix.com/fr/",
+    "color": "#E50914",
+    "search": "https://www.netflix.com/search?q={q}",
+    "categories": [
+      {
+        "cat": "Films",
+        "title": "Films Netflix",
+        "url": "https://www.netflix.com/browse/genre/34399"
+      },
+      {
+        "cat": "Séries",
+        "title": "Séries Netflix",
+        "url": "https://www.netflix.com/browse/genre/83"
+      },
+      {
+        "cat": "Documentaires",
+        "title": "Documentaires Netflix",
+        "url": "https://www.netflix.com/browse/genre/6839"
+      },
+      {
+        "cat": "Jeunesse",
+        "title": "Enfants et famille Netflix",
+        "url": "https://www.netflix.com/browse/genre/783"
+      },
+      {
+        "cat": "Animés",
+        "title": "Animés Netflix",
+        "url": "https://www.netflix.com/browse/genre/7424"
+      }
+    ]
+  },
+  {
+    "id": "prime",
+    "kind": "service",
+    "title": "Prime Video",
+    "url": "https://www.primevideo.com/",
+    "color": "#00A8E1",
+    "search": "https://www.primevideo.com/search/ref=atv_nb_sug?phrase={q}",
     "categories": []
   },
   {
-    "id": "pluto", "title": "Pluto TV", "url": "https://pluto.tv/fr/on-demand",
-    "categories": [
-      { "cat": "Films", "title": "À la demande", "url": "https://pluto.tv/fr/on-demand" }
-    ]
+    "id": "canal",
+    "kind": "service",
+    "title": "Canal+",
+    "url": "https://www.canalplus.com/",
+    "color": "#222222",
+    "categories": []
+  },
+  {
+    "id": "disney",
+    "kind": "service",
+    "title": "Disney+",
+    "url": "https://www.disneyplus.com/fr-fr",
+    "color": "#113CCF",
+    "categories": []
+  },
+  {
+    "id": "appletv",
+    "kind": "service",
+    "title": "Apple TV+",
+    "url": "https://tv.apple.com/fr",
+    "color": "#3A3A3C",
+    "categories": []
+  },
+  {
+    "id": "paramount",
+    "kind": "service",
+    "title": "Paramount+",
+    "url": "https://www.paramountplus.com/fr/",
+    "color": "#0064FF",
+    "categories": []
+  },
+  {
+    "id": "crunchyroll",
+    "kind": "service",
+    "title": "Crunchyroll",
+    "url": "https://www.crunchyroll.com/fr",
+    "color": "#F47521",
+    "categories": []
+  },
+  {
+    "id": "molotov",
+    "kind": "service",
+    "title": "Molotov",
+    "url": "https://www.molotov.tv/",
+    "color": "#7A2BE2",
+    "categories": []
+  },
+  {
+    "id": "youtube",
+    "kind": "service",
+    "title": "YouTube",
+    "url": "https://www.youtube.com/",
+    "color": "#CC0000",
+    "search": "https://www.youtube.com/results?search_query={q}",
+    "categories": []
   }
 ]
