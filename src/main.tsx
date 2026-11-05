@@ -297,7 +297,7 @@ if (document.readyState === 'loading') {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      const registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
       registration.update().catch(() => {});
 
       // Re-souscrire au push si permission déjà accordée mais subscription perdue

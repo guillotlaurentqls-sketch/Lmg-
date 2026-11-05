@@ -196,6 +196,8 @@ export default defineConfig(({ mode, command }) => {
   const glitchtipAuthToken = command === 'build' ? (buildEnv.GLITCHTIP_AUTH_TOKEN || '').trim() : ''
 
   return {
+    // Sous-dossier d'hébergement (ex. GitHub Pages : /Lmg-/). Vide = racine.
+    base: process.env.VITE_BASE_PATH || '/',
     logLevel: 'warn',
     plugins: [
       react(),
