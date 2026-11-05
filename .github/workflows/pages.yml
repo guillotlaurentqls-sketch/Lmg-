@@ -24,6 +24,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Vérifier la clé TMDB
+        env:
+          K: ${{ secrets.VITE_TMDB_API_KEY || vars.VITE_TMDB_API_KEY }}
+        run: |
+          if [ -z "$K" ]; then
+            echo "::error title=Clé TMDB absente::Ajoute le secret VITE_TMDB_API_KEY (Settings > Secrets and variables > Actions > Repository secrets), sans guillemets."
+            exit 1
+          fi
+          if ! printf '%s' "$K" | grep -Eq '^[0-9a-f]{32}$'; then
+            echo "::error title=Clé TMDB invalide::La valeur doit faire 32 caractères hexadécimaux (clé API v3), pas le jeton d'accès."
+            exit 1
+          fi
       - name: Build
         run: npm run build
         env:
