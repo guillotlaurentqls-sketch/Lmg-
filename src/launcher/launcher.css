@@ -313,3 +313,17 @@ button.more { display: block; margin: 8px auto 0; height: 44px; padding: 0 28px;
   .mainnav button[data-page="list"] { display: none; } /* Ma liste : bouton « Tout voir » de la rangée d'accueil */
   .mainnav button .tx { white-space: nowrap; font-size: 10.5px; }
 }
+.updbar { display: flex; align-items: center; gap: 12px; margin: 10px 4vw 0; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+.updbar button { height: 30px; font-size: 12px; }
+.badge.newb { background: var(--acc); color: var(--acc-ink); font-weight: 700; }
+.card.svc.off { opacity: .5; filter: grayscale(.7); }
+.frow.offrow .fname { opacity: .55; }
+.frow button.on { border-color: var(--ok); color: var(--ok); }
+textarea.backup { display: block; width: calc(100% - 8vw); margin: 8px 4vw 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vertical; }
+.backup ~ .hero-actions { margin: 10px 4vw 0; }
+.backup ~ .pagesub { margin: 8px 4vw 0; }
+@media (max-width: 699px) {
+  .updbar { margin-left: 14px; margin-right: 14px; }
+  textarea.backup { width: calc(100% - 28px); margin-left: 14px; }
+  .backup ~ .hero-actions, .backup ~ .pagesub { margin-left: 14px; margin-right: 14px; }
+}

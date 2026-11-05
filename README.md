@@ -42,13 +42,20 @@ Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé pa
 Sur le site web, la page **Explorer** fonctionne comme une appli de lecture à sources, mais **uniquement avec des sources qui publient leur catalogue par une API ouverte** :
 
 - **Internet Archive** : longs métrages, télévision classique, films muets, animation, science-fiction, archives Prelinger.
-- **PeerTube** : Framatube par défaut ; tu peux ajouter n’importe quelle instance par son adresse (en https).
+- **PeerTube** : Framatube par défaut ; des instances suggérées en un clic (Blender, TILvids, Les Communs, Ploud) ; tu peux ajouter n’importe quelle autre instance par son adresse en https.
 
-On y trouve la recherche, le tri (populaires, récents), les catégories, une **fiche** avec la licence, un **lecteur intégré**, une **bibliothèque**, un **historique** et la **reprise à la minute près** (rangée « Reprendre » sur l’accueil). Les données restent dans le navigateur, séparées par profil.
+Ce qu’on y fait :
+- **Recherche globale** : une barre qui interroge toutes les sources activées en même temps, résultats groupés par source, « Tout voir » pour ouvrir une source avec la recherche.
+- **Sources enregistrées** : ajouter, retirer, activer ou désactiver chaque source (onglet Sources).
+- **Nouveautés et mises à jour** : à l’ouverture (au plus toutes les 6 h) et avec « ↻ Mettre à jour », l’appli regarde les ajouts récents de chaque source et les signale (badge « Nouveau », rangée « Nouveautés »).
+- **Fiche** avec licence, **lecteur intégré**, **bibliothèque** (filtrable par source), **historique** et **reprise à la minute près**.
+- **Sauvegarde** : exporte sources, bibliothèque et historique en texte, importe-les sur un autre appareil (ils sont fusionnés).
+
+Les données restent dans le navigateur, séparées par profil.
 
 - Les vidéos sont lues depuis le serveur de la source, rien n’est copié.
 - La licence est affichée sur chaque fiche. Le **téléchargement n’est proposé que pour les licences ouvertes** (domaine public, Creative Commons) ; sinon, lecture en ligne seulement.
-- Ces catalogues sont alimentés par des internautes : des œuvres de toutes sortes s’y trouvent, certaines pour adultes, et les droits ne sont pas garantis partout. La licence affichée est celle déclarée par la source.
+- Ces catalogues sont alimentés par des internautes : des œuvres de toutes sortes s’y trouvent, certaines pour adultes, et les droits ne sont pas garantis partout. La licence affichée est celle déclarée par la source. Les instances PeerTube sont interrogées avec le filtre « contenus sensibles » désactivé.
 - Hors du site web (appli de bureau et Android), Explorer n’est pas disponible.
 
 ### Abonnements (Netflix, Prime Video, Canal+…)
