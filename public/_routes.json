@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/wasm/*",
+    "/avatars/*",
+    "/live/*",
+    "/WatchpartyTutorial/*",
+    "/movix.png",
+    "/movix.svg",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/llms.txt",
+    "/sw.js"
+  ]
+}

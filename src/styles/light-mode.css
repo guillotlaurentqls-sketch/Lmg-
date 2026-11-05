@@ -1,0 +1,113 @@
+/* ─── Mode Léger + préférences granulaires d'animations ─────────────────────
+   Chaque catégorie est pilotée par un attribut `data-*` posé sur <html> par
+   LightModeContext. `data-light-mode="true"` reste un raccourci qui ajoute
+   AUSSI tous les attributs `data-no-*` (calcul fait dans le provider), donc
+   les sélecteurs `[data-light-mode="true"]` ci-dessous sont conservés pour
+   les règles trop spécifiques pour rentrer dans une catégorie. */
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ANIMATIONS DE FOND (data-no-bg-anim)
+   - canvas (DynamicBackground, particules)
+   - flocons de neige
+   - screensaver kenburns
+   - animations décoratives "rainbow"
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-no-bg-anim] [data-decorative-animation] {
+  display: none !important;
+}
+html[data-no-bg-anim] .snow-particle {
+  display: none !important;
+  animation: none !important;
+}
+html[data-no-bg-anim] .screensaver-kenburns,
+html[data-no-bg-anim] .screensaver-mosaic-item img {
+  animation: none !important;
+}
+html[data-no-bg-anim] [class*="rainbow"],
+html[data-no-bg-anim] .animated-gradient-bg {
+  animation: none !important;
+}
+/* Halo lumineux radial du SquareBackground — coûteux (RAF sur pointermove
+   + radial-gradient). Inclus dans la catégorie "animations de fond". */
+html[data-no-bg-anim] .square-bg-halo {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ANIMATIONS DE CHARGEMENT (data-no-loading-anim)
+   - skeletons pulsants (animate-pulse)
+   - spinners (animate-spin)
+   - rebonds (animate-bounce, animate-ping)
+   On vise les classes Tailwind utilitaires, qui sont employées partout pour
+   l'état "loading".
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-no-loading-anim] .animate-pulse,
+html[data-no-loading-anim] .animate-spin,
+html[data-no-loading-anim] .animate-bounce,
+html[data-no-loading-anim] .animate-ping,
+html[data-no-loading-anim] [class*="animate-pulse"],
+html[data-no-loading-anim] [class*="animate-spin"],
+html[data-no-loading-anim] .react-loading-skeleton,
+html[data-no-loading-anim] .react-loading-skeleton::after {
+  animation: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   EFFETS DE FLOU (data-no-blur)
+   - backdrop-blur (très coûteux GPU, plante les Smart TV)
+   Les flous de contenu (anti-spoiler) et les filtres vidéo sont préservés.
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-no-blur] [class*="backdrop-blur"],
+html[data-no-blur] [style*="backdrop-filter"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  background-color: rgba(10, 10, 15, 0.95) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   TRANSITIONS (data-no-transitions)
+   - Coupe transitions CSS sur tout l'arbre
+   - framer-motion est géré séparément via <MotionConfig reducedMotion>
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-no-transitions] *,
+html[data-no-transitions] *::before,
+html[data-no-transitions] *::after {
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-no-transitions] {
+  scroll-behavior: auto !important;
+}
+
+html[data-no-transitions] .animate-fadeIn,
+html[data-no-transitions] .animate-fadeOut,
+html[data-no-transitions] .animate-card-enter,
+html[data-no-transitions] .animate-skeleton-fade {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MODE LÉGER : aucun mouvement CSS, y compris les animations définies inline
+   ou par une bibliothèque. Les préférences granulaires restent ciblées ;
+   seul le mode léger impose cette suppression sur tout l'arbre.
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-light-mode="true"] *,
+html[data-light-mode="true"] *::before,
+html[data-light-mode="true"] *::after {
+  /* Termine aussi les animations inline/personnalisées et les pseudo-éléments.
+     Une durée nulle conserve l'état final et animationend des panneaux. */
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+}
+
+/* will-change : supprime la promotion de couches GPU partout en Mode Léger. */
+html[data-light-mode="true"] [style*="will-change"],
+html[data-light-mode="true"] [class*="will-change"] {
+  will-change: auto !important;
+}

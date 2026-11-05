@@ -1,0 +1,31 @@
+# Movix
+
+> Movix est une plateforme française de streaming multimédia. Elle propose des films, séries, TV en direct, et des fonctionnalités sociales comme les Watch Parties synchronisées. Interface moderne, compatible multi-appareils, avec support navigateur et extensions.
+
+## Pages principales
+
+- [Accueil](__MOVIX_SITE_URL__/) : page d'accueil avec sélections et contenus mis en avant
+- [Films](__MOVIX_SITE_URL__/movies) : catalogue complet de films
+- [Séries TV](__MOVIX_SITE_URL__/tv-shows) : catalogue des séries et épisodes
+- [Recherche](__MOVIX_SITE_URL__/search) : recherche multimédia
+- [TV en direct](__MOVIX_SITE_URL__/live-tv) : chaînes en direct
+- [Collections](__MOVIX_SITE_URL__/collections) : collections thématiques
+- [Roulette](__MOVIX_SITE_URL__/roulette) : découverte aléatoire
+- [Watch Parties](__MOVIX_SITE_URL__/watchparty/list) : visionnage synchronisé entre amis
+
+## Informations
+
+- [À propos](__MOVIX_SITE_URL__/about) : présentation et mission
+- [VIP](__MOVIX_SITE_URL__/vip) : programme premium
+- [Extension](__MOVIX_SITE_URL__/extension) : extensions Chrome, Firefox et userscript
+- [Débrid](__MOVIX_SITE_URL__/debrid) : intégration des services de débridage
+
+## Légal
+
+- [Conditions d'utilisation](__MOVIX_SITE_URL__/terms-of-service)
+- [Politique de confidentialité](__MOVIX_SITE_URL__/privacy)
+- Licence du projet : CC BY-NC 4.0 (usage non-commercial)
+
+## Contact
+
+- Support : movixstreaming@gmail.com

@@ -1,0 +1,84 @@
+{
+  "manifest_version": 3,
+  "name": "Movix Proxy Extension",
+  "version": "1.6.6",
+  "description": "Extension proxy pour Live TV Movix - Contourne CORS, injecte les headers et extrait les sources Nexus",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
+  "icons": {
+    "16": "movix.png",
+    "48": "movix.png",
+    "128": "movix.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "movix.png",
+      "48": "movix.png",
+      "128": "movix.png"
+    },
+    "default_title": "Movix Extension"
+  },
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "alarms",
+    "storage"
+  ],
+  "host_permissions": ["<all_urls>", "http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "*://localhost/*",
+      "*://movix.cash/*",
+      "*://*.movix.cash/*",
+      "*://movix.cloud/*",
+      "*://*.movix.cloud/*",
+      "*://movix.tax/*",
+      "*://*.movix.tax/*",
+      "*://movix.club/*",
+      "*://*.movix.club/*",
+      "*://movix.golf/*",
+      "*://*.movix.golf/*",
+      "*://movix.chat/*",
+      "*://*.movix.chat/*",
+      "*://movix.date/*",
+      "*://*.movix.date/*",
+      "*://movix.fun/*",
+      "*://*.movix.fun/*",
+      "*://movix.show/*",
+      "*://*.movix.show/*",
+      "*://movix.men/*",
+      "*://*.movix.men/*",
+      "*://movix.college/*",
+      "*://*.movix.college/*",
+      "*://movix.luxe/*",
+      "*://*.movix.luxe/*",
+      "*://movix.dog/*",
+      "*://*.movix.dog/*"
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content.js",
+        "injected.js",
+        "extractors.js",
+        "fsvid-vidzy-quickjs.js",
+        "popup.html",
+        "popup.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
