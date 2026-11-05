@@ -42,6 +42,7 @@ jobs:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
           VITE_SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
           VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY || vars.VITE_TMDB_API_KEY }}
+          VITE_DEFAULT_LANGUAGE: fr
           VITE_MAIN_API: ${{ vars.VITE_MAIN_API }}
           VITE_PROXIES_EMBED_API: ${{ vars.VITE_PROXIES_EMBED_API }}
       # GitHub Pages n'a pas de routage côté serveur : 404.html renvoie vers l'application.

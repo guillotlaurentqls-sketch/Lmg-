@@ -70,6 +70,12 @@ export const getResolvedAppLanguage = (): LoadedLanguage =>
   resolveLoadedLanguage(i18n.resolvedLanguage || i18n.language || getStoredLanguage());
 
 // Retrieve stored language from localStorage (set by user in settings or loaded from server)
+// Langue imposée à la première visite (build : VITE_DEFAULT_LANGUAGE=fr). Vide = détection navigateur/IP.
+const getForcedDefaultLanguage = (): LoadedLanguage | null => {
+  const forced = String(import.meta.env.VITE_DEFAULT_LANGUAGE || '').trim().toLowerCase();
+  return LOADED_LANG_CODES.has(forced as SupportedLanguage) ? (forced as LoadedLanguage) : null;
+};
+
 const getStoredLanguage = (): LoadedLanguage | null => {
   const storedLanguage = readLocalStorage('user_language');
   return storedLanguage ? resolveLoadedLanguage(storedLanguage) : null;
@@ -106,7 +112,7 @@ i18n
     // langue déclarée dans supportedLngs mais pas bundlée au boot ('en') :
     // on la charge nous-mêmes via addResourceBundle plus bas.
     partialBundledLanguages: true,
-    lng: getStoredLanguage() || undefined, // Use stored language if available
+    lng: getStoredLanguage() || getForcedDefaultLanguage() || undefined, // Use stored language if available
     // Volontairement 'fr' et non DEFAULT_LANGUAGE : fr est le seul bundle
     // garanti disponible de façon synchrone au boot, donc le seul repli
     // fiable tant que le bundle 'en' n'est pas encore chargé.
@@ -233,6 +239,12 @@ export const detectInitialLanguage = async (): Promise<void> => {
     if (storedLanguage !== resolvedStoredLanguage || getResolvedAppLanguage() !== resolvedStoredLanguage) {
       await applyLanguage(resolvedStoredLanguage, detectionRevision);
     }
+    return;
+  }
+
+  const forcedLanguage = getForcedDefaultLanguage();
+  if (forcedLanguage) {
+    if (detectionRevision === languageChoiceRevision) await applyLanguage(forcedLanguage, detectionRevision);
     return;
   }
 
