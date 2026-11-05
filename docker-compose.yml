@@ -64,8 +64,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change_me_dev_only_secret}
       TMDB_API_KEY: ${VITE_TMDB_API_KEY:-}
       FRONTEND_BASE_URL: ${VITE_SITE_URL:-http://localhost:3000}
-      PUBLIC_API_BASE: http://localhost:25565
-      PROXIESEMBED_PUBLIC_URL: http://localhost:25569
+      PUBLIC_API_BASE: ${VITE_MAIN_API:-http://localhost:25565}
+      PROXIESEMBED_PUBLIC_URL: ${VITE_PROXIES_EMBED_API:-http://localhost:25569}
       PROXIESEMBED_INTERNAL_URL: http://proxiesembed:25569
       MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET:-change_me_dev_only_media}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-change_me_dev_only_internal}
@@ -80,7 +80,7 @@ services:
       - "25569:25569"
     environment:
       <<: *db-env
-      PROXY_BASE: http://localhost:25569
+      PROXY_BASE: ${VITE_PROXIES_EMBED_API:-http://localhost:25569}
       MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET:-change_me_dev_only_media}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-change_me_dev_only_internal}
 

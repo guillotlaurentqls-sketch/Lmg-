@@ -304,3 +304,7 @@ Ce projet est distribué sous licence Creative Commons Attribution-NonCommercial
 Ce projet est fourni uniquement à des fins éducatives, de recherche et de démonstration.
 Il n'encourage ni ne cautionne une utilisation illégale, le contournement de droits, ou toute violation des lois applicables.
 Chaque utilisateur est seul responsable de l'usage qu'il en fait.
+
+### Depuis une tablette (GitHub Codespaces)
+
+Ouvre <https://codespaces.new/guillotlaurentqls-sketch/Lmg-/tree/movix>, crée le Codespace (ajoute ton secret `VITE_TMDB_API_KEY` quand GitHub le demande) : la pile se construit et se lance toute seule. L'adresse du site s'affiche dans le terminal (`https://<codespace>-3000.app.github.dev`).
