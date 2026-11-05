@@ -1,0 +1,103 @@
+# Lancement complet de Movix : docker compose up --build
+# Site : http://localhost:3000 — API : :25565 — proxy embed : :25569
+# Personnaliser via un fichier .env à côté de ce fichier (voir .env.example).
+# VITE_TMDB_API_KEY est indispensable pour afficher films et séries.
+# Les VITE_* sont publics : ils sont inscrits dans le JavaScript du site.
+
+x-db-env: &db-env
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_USER: movix
+  DB_PASSWORD: ${MYSQL_PASSWORD:-movix_dev_password}
+  DB_NAME: movix
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: movix
+      MYSQL_USER: movix
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-movix_dev_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-movix_root_dev_password}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Schéma complet créé au premier démarrage (les tables films/séries ne sont pas auto-créées par l'API)
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-movix_redis_dev}"]
+    volumes:
+      - redis-data:/data
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-movix_redis_dev}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mainapi:
+    build: ./API/Mainapi
+    restart: unless-stopped
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports:
+      - "25565:25565"
+    environment:
+      <<: *db-env
+      NODE_ENV: production
+      PORT: "25565"
+      NUM_WORKERS: ${NUM_WORKERS:-2}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-movix_redis_dev}
+      JWT_SECRET: ${JWT_SECRET:-change_me_dev_only_secret}
+      TMDB_API_KEY: ${VITE_TMDB_API_KEY:-}
+      FRONTEND_BASE_URL: ${VITE_SITE_URL:-http://localhost:3000}
+      PUBLIC_API_BASE: http://localhost:25565
+      PROXIESEMBED_PUBLIC_URL: http://localhost:25569
+      PROXIESEMBED_INTERNAL_URL: http://proxiesembed:25569
+      MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET:-change_me_dev_only_media}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-change_me_dev_only_internal}
+      MAINAPI_PROBE_SECONDS: "0"
+
+  proxiesembed:
+    build: ./API/proxiesembed
+    restart: unless-stopped
+    depends_on:
+      mysql: { condition: service_healthy }
+    ports:
+      - "25569:25569"
+    environment:
+      <<: *db-env
+      PROXY_BASE: http://localhost:25569
+      MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET:-change_me_dev_only_media}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-change_me_dev_only_internal}
+
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_SITE_URL: ${VITE_SITE_URL:-http://localhost:3000}
+        VITE_MAIN_API: ${VITE_MAIN_API:-http://localhost:25565}
+        VITE_PROXIES_EMBED_API: ${VITE_PROXIES_EMBED_API:-http://localhost:25569}
+        VITE_TMDB_API_KEY: ${VITE_TMDB_API_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      - mainapi
+    ports:
+      - "3000:3001"
+
+volumes:
+  mysql-data:
+  redis-data:

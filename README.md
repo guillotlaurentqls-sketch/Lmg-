@@ -160,6 +160,15 @@ cp API/watchpartyAPI/.env.example API/watchpartyAPI/.env
 cp API/proxiesembed/.env.example API/proxiesembed/.env
 ```
 
+### Tout lancer avec Docker
+
+```bash
+cp .env.example .env      # renseigner VITE_TMDB_API_KEY
+docker compose up --build
+```
+
+Le site est sur http://localhost:3000, l'API principale sur :25565 et le proxy embed sur :25569. MySQL (schéma créé depuis `docker/mysql-init/`) et Redis démarrent avec le compose. Les mots de passe par défaut sont faits pour le développement : change-les dans `.env` avant toute exposition publique. WatchParty n'est pas incluse.
+
 ### Lancer le minimum utile en local
 
 ```bash
