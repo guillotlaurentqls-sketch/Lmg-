@@ -2,7 +2,7 @@
 
 const $ = (id) => document.getElementById(id);
 let state = null;
-let page = 'home'; // 'home' | 'abos' | 'cat' | 'tv' | 'list' | 'fav'
+let page = 'home'; // 'home' | 'explore' | 'abos' | 'cat' | 'tv' | 'list' | 'fav'
 let query = '';
 let manage = false; // écran des profils en mode « gérer »
 let lastSig = '';
@@ -257,6 +257,7 @@ function renderHome() {
   const recent = lib.filter((e) => e.lastOpened).sort((a, b) => b.lastOpened - a.lastOpened);
   root.append(hero(recent));
   const running = runningRow(); if (running) root.append(running);
+  if (window.Explore) { const r = window.Explore.homeRow(exploreCtx()); if (r) root.append(r); }
   if (serviceList().length) {
     const mine = serviceList().filter((p) => ownedServices().has(p.id));
     const manage = el('button', 'act', mine.length ? 'Gérer →' : 'Choisir →');
@@ -265,7 +266,11 @@ function renderHome() {
   }
   if (recent.length) root.append(row('Reprendre', recent.slice(0, 14).map(card)));
   const later = lib.filter((e) => e.later).sort(byTitle);
-  if (later.length) root.append(row('Ma liste', later.map(card), `${later.length}`));
+  if (later.length) {
+    const all = el('button', 'act', 'Tout voir →');
+    all.addEventListener('click', () => go('list'));
+    root.append(row('Ma liste', later.map(card), `${later.length}`, all));
+  }
   const favs = lib.filter((e) => e.favorite).sort(byTitle);
   if (favs.length) {
     const all = el('button', 'act', 'Tout voir →');
@@ -349,10 +354,14 @@ function renderSearch() {
   if (chanHits.length) { root.append(el('h3', 'sechead', 'Chaînes TV')); root.append(grid(chanHits.map(chanCard))); }
 }
 
+// « Explorer » (version web) : films et séries de sources publiques. Le module s'enregistre dans window.Explore.
+const exploreCtx = () => ({ state, el, btn, row, grid, paint, letter, hostOf, refresh: () => renderPage() });
+
 function renderPage() {
   const root = $('page');
   root.replaceChildren();
   if (query.trim() && !looksLikeUrl(query)) return renderSearch();
+  if (page === 'explore' && window.Explore) return window.Explore.render($('page'), exploreCtx());
   if (page === 'abos') return renderAbos();
   if (page === 'cat') return renderCategories();
   if (page === 'tv') return renderTv();
@@ -376,6 +385,8 @@ function avatarNode(p, cls) {
 }
 
 function renderHeader() {
+  const eb = document.querySelector('#mainNav button[data-page="explore"]');
+  if (eb) eb.hidden = !window.Explore;
   for (const b of $('mainNav').querySelectorAll('button')) b.classList.toggle('on', b.dataset.page === page && !query.trim());
   const ab = $('btnProfile');
   ab.replaceChildren();

@@ -37,6 +37,20 @@ Chaque site que tu ouvres est **ajouté tout seul** à l’accueil, regroupé pa
 - **Thème** sombre (par défaut), clair ou automatique : Réglages.
 - **Petits écrans** : l’interface s’adapte aux fenêtres étroites et au tactile (voir `docs/MOBILE.md` ; une vraie appli Android/iOS est un autre projet).
 
+### Explorer : films et séries de sources publiques (version web)
+
+Sur le site web, la page **Explorer** fonctionne comme une appli de lecture à sources, mais **uniquement avec des sources qui publient leur catalogue par une API ouverte** :
+
+- **Internet Archive** : longs métrages, télévision classique, films muets, animation, science-fiction, archives Prelinger.
+- **PeerTube** : Framatube par défaut ; tu peux ajouter n’importe quelle instance par son adresse (en https).
+
+On y trouve la recherche, le tri (populaires, récents), les catégories, une **fiche** avec la licence, un **lecteur intégré**, une **bibliothèque**, un **historique** et la **reprise à la minute près** (rangée « Reprendre » sur l’accueil). Les données restent dans le navigateur, séparées par profil.
+
+- Les vidéos sont lues depuis le serveur de la source, rien n’est copié.
+- La licence est affichée sur chaque fiche. Le **téléchargement n’est proposé que pour les licences ouvertes** (domaine public, Creative Commons) ; sinon, lecture en ligne seulement.
+- Ces catalogues sont alimentés par des internautes : des œuvres de toutes sortes s’y trouvent, certaines pour adultes, et les droits ne sont pas garantis partout. La licence affichée est celle déclarée par la source.
+- Hors du site web (appli de bureau et Android), Explorer n’est pas disponible.
+
 ### Abonnements (Netflix, Prime Video, Canal+…)
 
 La page **Abonnements** rassemble tes services en un seul endroit : coche ceux que tu as (Netflix, Prime Video, Canal+, Disney+, Apple TV+, Paramount+, Crunchyroll, Molotov, YouTube). Ils apparaissent alors sur l’accueil (rangée « Mes abonnements »), dans la recherche (une puce « Chercher sur Netflix… ») et dans les catégories (genres Netflix). Chaque profil a ses propres abonnements.

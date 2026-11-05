@@ -261,3 +261,55 @@ dialog legend { color: var(--muted); font-size: 12px; padding: 0; margin-bottom:
   .note { margin: 10px 14px 0; }
   .mainnav button[data-page="fav"] { display: none; } /* Favoris reste accessible depuis l'accueil (« Tout voir ») */
 }
+
+/* ───────── Explorer (version web) ───────── */
+.subnav { margin-top: 6px; }
+.chip2.on { background: var(--acc); color: var(--acc-ink); }
+.pagehead.inline { display: inline-block; margin: 0; }
+.backrow { display: flex; align-items: center; gap: 14px; margin: 12px 4vw 0; flex-wrap: wrap; }
+.searchrow { display: flex; gap: 8px; margin: 12px 4vw 0; max-width: 640px; }
+.searchrow input { flex: 1; min-width: 0; height: 42px; padding: 0 14px; font-size: 15px; }
+.card.media { width: auto; }
+.card.media .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.card.media .big { z-index: 0; }
+.card.media .meta { z-index: 1; }
+.card.media .tools { z-index: 2; }
+.progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.25); z-index: 2; }
+.progress i { display: block; height: 100%; background: var(--acc); }
+button.more { display: block; margin: 8px auto 0; height: 44px; padding: 0 28px; }
+.detail { display: flex; gap: 22px; margin: 16px 4vw 0; align-items: flex-start; }
+.dposter { position: relative; flex: 0 0 220px; aspect-ratio: 2 / 3; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.dposter img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dbody { flex: 1; min-width: 0; }
+.dbody .pagehead, .dbody .pagesub { margin-left: 0; margin-right: 0; }
+.dbody h2 { font-size: 28px; line-height: 1.15; overflow-wrap: anywhere; }
+.licline { margin: 6px 0 12px; color: var(--muted); }
+.lic { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--warn); color: var(--warn); font-size: 12px; }
+.lic.open { border-color: var(--ok); color: var(--ok); }
+.licline a { color: var(--acc); }
+.desc { margin: 14px 0 0; max-width: 70ch; line-height: 1.6; color: var(--fg); overflow-wrap: anywhere; }
+.btnlink { display: inline-flex; align-items: center; height: 42px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); text-decoration: none; }
+.btnlink.small { height: 34px; padding: 0 10px; }
+.btnlink:hover { border-color: var(--acc); }
+.playerbox { margin: 12px 4vw 0; background: #000; border-radius: 12px; overflow: hidden; }
+.playerbox video { display: block; width: 100%; max-height: 70vh; background: #000; }
+.files { margin: 8px 4vw 0; display: flex; flex-direction: column; gap: 6px; }
+.frow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.frow.now { border-color: var(--acc); }
+.frow .fname { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.frow .fsize { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.note.ok { border-color: var(--ok); color: var(--muted); }
+.detail ~ .btnlink { margin: 12px 4vw 0; }
+@media (max-width: 699px) {
+  .backrow, .searchrow, .playerbox, .files { margin-left: 14px; margin-right: 14px; }
+  .detail { flex-direction: column; margin: 14px 14px 0; }
+  .dposter { flex-basis: auto; width: 46%; }
+  .dbody h2 { font-size: 24px; }
+}
+
+.subnav ~ .outline, .subnav ~ .btnlink { margin: 12px 4vw 0; }
+@media (max-width: 699px) {
+  .subnav ~ .outline, .subnav ~ .btnlink { margin-left: 14px; margin-right: 14px; }
+  .mainnav button[data-page="list"] { display: none; } /* Ma liste : bouton « Tout voir » de la rangée d'accueil */
+  .mainnav button .tx { white-space: nowrap; font-size: 10.5px; }
+}

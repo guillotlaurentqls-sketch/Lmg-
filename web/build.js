@@ -13,14 +13,16 @@ const html = read('src/launcher/index.html');
 const css = read('src/launcher/launcher.css');
 const js = read('src/launcher/launcher.js');
 const shim = read('web/web-shim.js');
+const explore = read('src/launcher/explore.js');
 const embed = JSON.stringify({ channels: json('channels.json'), providers: json('providers.json'), defaults: json('sites.default.json') }).replace(/</g, '\\u003c');
 
 const body = html.slice(html.indexOf('<body'), html.indexOf('<script src="launcher.js">'))
   .replace(/<body[^>]*>/, '');
-for (const [name, text] of [['css', css], ['js', js], ['shim', shim]]) {
+for (const [name, text] of [['css', css], ['js', js], ['shim', shim], ['explore', explore]]) {
   if (/<\/(script|style)/i.test(text)) throw new Error(`${name} contient une balise de fermeture : à échapper`);
 }
 const scripts = `<script>window.__EMBED__ = ${embed};</script>\n<script>${shim}</script>\n<script>${js}</script>`;
+const withExplore = `${scripts.replace(`<script>${js}</script>`, `<script>${explore}</script>\n<script>${js}</script>`)}`;
 const TITLE = 'Lanceur AdBlock Web';
 
 const dist = path.join(__dirname, 'dist');
@@ -46,7 +48,7 @@ ${css}
 </head>
 <body class="mode-home">
 ${body}
-${scripts}
+${withExplore}
 </body>
 </html>
 `);
